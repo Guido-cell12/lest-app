@@ -1,0 +1,139 @@
+.form-header {
+  padding: 20px;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: 14px;
+  padding: 0;
+  margin-bottom: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.form-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.form-sub {
+  font-size: 13px;
+  color: var(--color-success);
+  margin: 4px 0 0;
+}
+
+.request-form {
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.form-textarea,
+.form-input {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  resize: none;
+}
+
+.form-textarea {
+  min-height: 90px;
+}
+
+.form-textarea:focus,
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.urgency-options {
+  display: flex;
+  gap: 8px;
+}
+
+.urgency-btn {
+  flex: 1;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.urgency-btn.active {
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 8px;
+}
+
+.confirm-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px;
+  gap: 12px;
+}
+
+.confirm-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+
+.confirm-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.confirm-text {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}

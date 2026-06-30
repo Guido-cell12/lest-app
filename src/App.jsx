@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import RequestForm from './RequestForm.jsx'
 import './App.css'
 
 const categories = [
@@ -10,6 +11,16 @@ const categories = [
 
 function App() {
   const [activeTab, setActiveTab] = useState('home')
+  const [selectedCategory, setSelectedCategory] = useState(null)
+
+  if (selectedCategory) {
+    return (
+      <RequestForm
+        category={selectedCategory}
+        onBack={() => setSelectedCategory(null)}
+      />
+    )
+  }
 
   return (
     <div className="app-shell">
@@ -26,7 +37,11 @@ function App() {
         <h2 className="section-title">Categorie</h2>
         <div className="cat-grid">
           {categories.map((cat) => (
-            <button key={cat.id} className="cat-card">
+            <button
+              key={cat.id}
+              className="cat-card"
+              onClick={() => setSelectedCategory(cat)}
+            >
               <span className="cat-name">{cat.name}</span>
               <span className="cat-available">{cat.available} disponibili</span>
             </button>
