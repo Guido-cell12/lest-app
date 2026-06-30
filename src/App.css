@@ -110,3 +110,18 @@
   color: var(--color-accent);
   font-weight: 600;
 }
+
+.pro-mode-link {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 0 20px 16px;
+  background: none;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import RequestForm from './RequestForm.jsx'
+import ProDashboard from './ProDashboard.jsx'
 import './App.css'
 
 const categories = [
@@ -12,6 +13,11 @@ const categories = [
 function App() {
   const [activeTab, setActiveTab] = useState('home')
   const [selectedCategory, setSelectedCategory] = useState(null)
+  const [proMode, setProMode] = useState(false)
+
+  if (proMode) {
+    return <ProDashboard onBack={() => setProMode(false)} />
+  }
 
   if (selectedCategory) {
     return (
@@ -52,6 +58,10 @@ function App() {
       <section className="section map-section">
         <span className="map-text">Milano, Lombardia</span>
       </section>
+
+      <button className="pro-mode-link" onClick={() => setProMode(true)}>
+        Sei un professionista? Entra qui →
+      </button>
 
       <nav className="bottom-nav">
         <button
