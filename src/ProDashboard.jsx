@@ -1,44 +1,53 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from './supabaseClient.js'
 import './ProDashboard.css'
 
-const initialRequests = [
-  {
-    id: 1,
-    title: 'Perdita acqua bagno',
-    address: 'Via Roma 14',
-    distance: '1.2 km',
-    price: '60 - 120',
-    time: '5 min fa',
-  },
-  {
-    id: 2,
-    title: 'Scaldabagno non si accende',
-    address: 'Corso Buenos Aires 8',
-    distance: '2.8 km',
-    price: '50 - 90',
-    time: '12 min fa',
-  },
-  {
-    id: 3,
-    title: 'Rubinetto cucina rotto',
-    address: 'Viale Monza 102',
-    distance: '4.5 km',
-    price: '40 - 70',
-    time: '20 min fa',
-  },
-]
-
-function ProDashboard({ proName, onBack }) {
+function ProDashboard({ proName, proCategory, onBack }) {
   const [available, setAvailable] = useState(true)
-  const [requests, setRequests] = useState(initialRequests)
+  const [requests, setRequests] = useState([])
+  const [loading, setLoading] = useState(true)
   const [acceptedJob, setAcceptedJob] = useState(null)
 
-  function handleAccept(request) {
-    setAcceptedJob(request)
-    setRequests((prev) => prev.filter((r) => r.id !== request.id))
+  async function loadRequests() {
+    setLoading(true)
+    let query = supabase
+      .from('requests')
+      .select('*')
+      .eq('status', 'in_attesa')
+      .order('created_at', { ascending: false })
+
+    if (proCategory) {
+      query = query.eq('category', proCategory)
+    }
+
+    const { data, error } = await query
+
+    if (!error && data) {
+      setRequests(data)
+    }
+    setLoading(false)
   }
 
-  function handleDecline(request) {
+  useEffect(() => {
+    if (available) {
+      loadRequests()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [available])
+
+  async function handleAccept(request) {
+    const { error } = await supabase
+      .from('requests')
+      .update({ status: 'accettata' })
+      .eq('id', request.id)
+
+    if (!error) {
+      setAcceptedJob(request)
+      setRequests((prev) => prev.filter((r) => r.id !== request.id))
+    }
+  }
+
+  async function handleDecline(request) {
     setRequests((prev) => prev.filter((r) => r.id !== request.id))
   }
 
@@ -49,9 +58,9 @@ function ProDashboard({ proName, onBack }) {
           <div className="confirm-icon">✓</div>
           <h2 className="confirm-title">Lavoro accettato</h2>
           <p className="confirm-text">
-            <strong>{acceptedJob.title}</strong>
+            <strong>{acceptedJob.description}</strong>
             <br />
-            {acceptedJob.address} — {acceptedJob.distance}
+            {acceptedJob.address}
           </p>
           <button className="btn-primary" onClick={() => setAcceptedJob(null)}>
             Torna alle richieste
@@ -87,16 +96,12 @@ function ProDashboard({ proName, onBack }) {
 
       <div className="pro-stat-row">
         <div className="pro-stat">
-          <div className="pro-stat-num">12</div>
-          <div className="pro-stat-label">Lavori</div>
+          <div className="pro-stat-num">{proCategory || '—'}</div>
+          <div className="pro-stat-label">Categoria</div>
         </div>
         <div className="pro-stat">
-          <div className="pro-stat-num">4.9</div>
-          <div className="pro-stat-label">Rating</div>
-        </div>
-        <div className="pro-stat">
-          <div className="pro-stat-num">840€</div>
-          <div className="pro-stat-label">Questo mese</div>
+          <div className="pro-stat-num">{requests.length}</div>
+          <div className="pro-stat-label">In attesa</div>
         </div>
       </div>
 
@@ -109,23 +114,23 @@ function ProDashboard({ proName, onBack }) {
           </p>
         )}
 
-        {available && requests.length === 0 && (
+        {available && loading && <p className="empty-text">Caricamento...</p>}
+
+        {available && !loading && requests.length === 0 && (
           <p className="empty-text">Nessuna richiesta al momento. Torna più tardi.</p>
         )}
 
         {available &&
+          !loading &&
           requests.map((req) => (
             <div key={req.id} className="request-card">
               <div className="req-top">
-                <div className="req-title">{req.title}</div>
+                <div className="req-title">{req.description}</div>
                 <div className="badge badge-new">Nuova</div>
               </div>
-              <div className="req-addr">
-                {req.address} — {req.distance}
-              </div>
+              <div className="req-addr">{req.address}</div>
               <div className="req-bottom">
-                <div className="req-price">€ {req.price}</div>
-                <div className="req-time">{req.time}</div>
+                <div className="req-price">Urgenza: {req.urgency}</div>
               </div>
               <button className="btn-primary" onClick={() => handleAccept(req)}>
                 Accetta richiesta

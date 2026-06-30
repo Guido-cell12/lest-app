@@ -35,13 +35,14 @@ function App() {
   }
 
   if (user.type === 'pro') {
-    return <ProDashboard proName={user.name} onBack={handleLogout} />
+    return <ProDashboard proName={user.name} proCategory={user.category} onBack={handleLogout} />
   }
 
   if (selectedCategory) {
     return (
       <RequestForm
         category={selectedCategory}
+        clientName={user.name}
         onBack={() => setSelectedCategory(null)}
       />
     )

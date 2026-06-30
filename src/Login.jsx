@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { supabase } from './supabaseClient.js'
 import './Login.css'
 
 const commonCategories = ['Idraulico', 'Elettricista', 'Imbianchino', 'Muratore', 'Falegname', 'Giardiniere']
@@ -12,12 +13,37 @@ function Login({ onLoginClient, onLoginPro }) {
   const [customCategory, setCustomCategory] = useState('')
   const [city, setCity] = useState('')
 
-  function handleSubmit(e) {
+  const [errorMsg, setErrorMsg] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e) {
     e.preventDefault()
+    setErrorMsg('')
+    setLoading(true)
+
+    const category = selectedCategory === 'Altro' ? customCategory : selectedCategory
+
+    const { error } = await supabase.from('users').insert({
+      type: mode,
+      name,
+      email,
+      category: mode === 'pro' ? category : null,
+      city: mode === 'pro' ? city : null,
+    })
+
+    setLoading(false)
+
+    if (error) {
+      // Se l'email esiste già, lasciamo comunque entrare l'utente
+      if (!error.message.includes('duplicate')) {
+        setErrorMsg('Qualcosa è andato storto, riprova.')
+        return
+      }
+    }
+
     if (mode === 'client') {
       onLoginClient({ name, email })
     } else {
-      const category = selectedCategory === 'Altro' ? customCategory : selectedCategory
       onLoginPro({ name, email, category, city })
     }
   }
@@ -148,8 +174,10 @@ function Login({ onLoginClient, onLoginPro }) {
           </>
         )}
 
-        <button type="submit" className="btn-primary">
-          {mode === 'client' ? 'Entra' : 'Crea profilo professionista'}
+        {errorMsg && <p className="error-text">{errorMsg}</p>}
+
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Caricamento...' : mode === 'client' ? 'Entra' : 'Crea profilo professionista'}
         </button>
       </form>
     </div>

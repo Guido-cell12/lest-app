@@ -1,14 +1,36 @@
 import { useState } from 'react'
+import { supabase } from './supabaseClient.js'
 import './RequestForm.css'
 
-function RequestForm({ category, onBack }) {
+function RequestForm({ category, clientName, onBack }) {
   const [description, setDescription] = useState('')
   const [address, setAddress] = useState('')
   const [urgency, setUrgency] = useState('oggi')
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
+    setLoading(true)
+    setErrorMsg('')
+
+    const { error } = await supabase.from('requests').insert({
+      client_name: clientName || 'Cliente',
+      category: category.name,
+      description,
+      address,
+      urgency,
+      status: 'in_attesa',
+    })
+
+    setLoading(false)
+
+    if (error) {
+      setErrorMsg('Qualcosa è andato storto, riprova.')
+      return
+    }
+
     setSubmitted(true)
   }
 
@@ -92,8 +114,10 @@ function RequestForm({ category, onBack }) {
           </div>
         </label>
 
-        <button type="submit" className="btn-primary">
-          Invia richiesta
+        {errorMsg && <p className="error-text">{errorMsg}</p>}
+
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Invio in corso...' : 'Invia richiesta'}
         </button>
       </form>
     </div>
