@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Login from './Login.jsx'
 import RequestForm from './RequestForm.jsx'
 import ProDashboard from './ProDashboard.jsx'
 import './App.css'
@@ -11,12 +12,30 @@ const categories = [
 ]
 
 function App() {
+  const [user, setUser] = useState(null) // { type: 'client' | 'pro', ...dati }
   const [activeTab, setActiveTab] = useState('home')
   const [selectedCategory, setSelectedCategory] = useState(null)
-  const [proMode, setProMode] = useState(false)
 
-  if (proMode) {
-    return <ProDashboard onBack={() => setProMode(false)} />
+  function handleLoginClient(data) {
+    setUser({ type: 'client', ...data })
+  }
+
+  function handleLoginPro(data) {
+    setUser({ type: 'pro', ...data })
+  }
+
+  function handleLogout() {
+    setUser(null)
+    setSelectedCategory(null)
+    setActiveTab('home')
+  }
+
+  if (!user) {
+    return <Login onLoginClient={handleLoginClient} onLoginPro={handleLoginPro} />
+  }
+
+  if (user.type === 'pro') {
+    return <ProDashboard proName={user.name} onBack={handleLogout} />
   }
 
   if (selectedCategory) {
@@ -32,7 +51,7 @@ function App() {
     <div className="app-shell">
       <header className="header">
         <h1 className="logo">LEST</h1>
-        <p className="tagline">Pronto intervento a domicilio</p>
+        <p className="tagline">Ciao {user.name}, di cosa hai bisogno?</p>
       </header>
 
       <div className="search-bar">
@@ -59,8 +78,8 @@ function App() {
         <span className="map-text">Milano, Lombardia</span>
       </section>
 
-      <button className="pro-mode-link" onClick={() => setProMode(true)}>
-        Sei un professionista? Entra qui →
+      <button className="pro-mode-link" onClick={handleLogout}>
+        Esci
       </button>
 
       <nav className="bottom-nav">

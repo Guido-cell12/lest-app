@@ -28,7 +28,7 @@ const initialRequests = [
   },
 ]
 
-function ProDashboard({ onBack }) {
+function ProDashboard({ proName, onBack }) {
   const [available, setAvailable] = useState(true)
   const [requests, setRequests] = useState(initialRequests)
   const [acceptedJob, setAcceptedJob] = useState(null)
@@ -65,10 +65,10 @@ function ProDashboard({ onBack }) {
     <div className="app-shell">
       <header className="pro-header">
         <button className="back-btn" onClick={onBack}>
-          ← Indietro
+          ← Esci
         </button>
         <h1 className="form-title">LEST Pro</h1>
-        <p className="form-sub">Ciao Marco</p>
+        <p className="form-sub">Ciao {proName || 'Professionista'}</p>
       </header>
 
       <div className="toggle-row">
