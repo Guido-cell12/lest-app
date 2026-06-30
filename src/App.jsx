@@ -4,7 +4,7 @@ import './App.css'
 const categories = [
   { id: 'idraulico', name: 'Idraulico', available: 3 },
   { id: 'elettricista', name: 'Elettricista', available: 5 },
-  { id: 'falegname', name: 'Falegname', available: 2 },
+  { id: 'imbianchino', name: 'Imbianchino', available: 2 },
   { id: 'muratore', name: 'Muratore', available: 1 },
 ]
 
@@ -35,7 +35,7 @@ function App() {
       </section>
 
       <section className="section map-section">
-        <span className="map-text">Prato, Toscana</span>
+        <span className="map-text">Milano, Lombardia</span>
       </section>
 
       <nav className="bottom-nav">
