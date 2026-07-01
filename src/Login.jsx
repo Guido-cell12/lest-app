@@ -6,13 +6,13 @@ const commonCategories = ['Idraulico', 'Elettricista', 'Imbianchino', 'Muratore'
 
 function Login({ onLoginClient, onLoginPro }) {
   const [mode, setMode] = useState(null) // null | 'client' | 'pro'
+  const [isRegistering, setIsRegistering] = useState(true)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [customCategory, setCustomCategory] = useState('')
   const [city, setCity] = useState('')
-
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -21,30 +21,67 @@ function Login({ onLoginClient, onLoginPro }) {
     setErrorMsg('')
     setLoading(true)
 
-    const category = selectedCategory === 'Altro' ? customCategory : selectedCategory
+    if (isRegistering) {
+      // Registrazione nuova
+      const { data, error } = await supabase.auth.signUp({ email, password })
 
-    const { error } = await supabase.from('users').insert({
-      type: mode,
-      name,
-      email,
-      category: mode === 'pro' ? category : null,
-      city: mode === 'pro' ? city : null,
-    })
-
-    setLoading(false)
-
-    if (error) {
-      // Se l'email esiste già, lasciamo comunque entrare l'utente
-      if (!error.message.includes('duplicate')) {
-        setErrorMsg('Qualcosa è andato storto, riprova.')
+      if (error) {
+        setErrorMsg(error.message)
+        setLoading(false)
         return
       }
-    }
 
-    if (mode === 'client') {
-      onLoginClient({ name, email })
+      const userId = data.user?.id
+      const category = selectedCategory === 'Altro' ? customCategory : selectedCategory
+
+      // Salva i dati extra nella tabella users
+      await supabase.from('users').insert({
+        id: userId,
+        type: mode,
+        name,
+        email,
+        category: mode === 'pro' ? category : null,
+        city: mode === 'pro' ? city : null,
+      })
+
+      setLoading(false)
+      if (mode === 'client') {
+        onLoginClient({ name, email })
+      } else {
+        onLoginPro({ name, email, category, city })
+      }
+
     } else {
-      onLoginPro({ name, email, category, city })
+      // Login esistente
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+
+      if (error) {
+        setErrorMsg('Email o password non corretti.')
+        setLoading(false)
+        return
+      }
+
+      const userId = data.user?.id
+
+      // Recupera i dati extra dalla tabella users
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      setLoading(false)
+
+      if (!userData) {
+        setErrorMsg('Utente non trovato.')
+        return
+      }
+
+      if (userData.type === 'client') {
+        onLoginClient({ name: userData.name, email: userData.email })
+      } else {
+        onLoginPro({ name: userData.name, email: userData.email, category: userData.category, city: userData.city })
+      }
     }
   }
 
@@ -54,7 +91,6 @@ function Login({ onLoginClient, onLoginPro }) {
         <div className="welcome-screen">
           <h1 className="welcome-logo">LEST</h1>
           <p className="welcome-tagline">Pronto intervento a domicilio</p>
-
           <div className="welcome-buttons">
             <button className="welcome-btn primary" onClick={() => setMode('client')}>
               Sono un cliente
@@ -71,31 +107,42 @@ function Login({ onLoginClient, onLoginPro }) {
   return (
     <div className="app-shell">
       <header className="form-header">
-        <button className="back-btn" onClick={() => setMode(null)}>
+        <button className="back-btn" onClick={() => { setMode(null); setErrorMsg('') }}>
           ← Indietro
         </button>
         <h1 className="form-title">
-          {mode === 'client' ? 'Accedi come cliente' : 'Accedi come professionista'}
+          {mode === 'client' ? 'Cliente' : 'Professionista'}
         </h1>
-        <p className="form-sub">
-          {mode === 'client'
-            ? 'Trova un professionista in pochi minuti'
-            : 'Ricevi richieste di lavoro nella tua zona'}
-        </p>
+        <div className="auth-tabs">
+          <button
+            className={isRegistering ? 'auth-tab active' : 'auth-tab'}
+            onClick={() => { setIsRegistering(true); setErrorMsg('') }}
+          >
+            Registrati
+          </button>
+          <button
+            className={!isRegistering ? 'auth-tab active' : 'auth-tab'}
+            onClick={() => { setIsRegistering(false); setErrorMsg('') }}
+          >
+            Accedi
+          </button>
+        </div>
       </header>
 
       <form className="request-form" onSubmit={handleSubmit}>
-        <label className="form-label">
-          Nome
-          <input
-            className="form-input"
-            type="text"
-            placeholder="Il tuo nome"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </label>
+        {isRegistering && (
+          <label className="form-label">
+            Nome
+            <input
+              className="form-input"
+              type="text"
+              placeholder="Il tuo nome"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </label>
+        )}
 
         <label className="form-label">
           Email
@@ -121,7 +168,7 @@ function Login({ onLoginClient, onLoginPro }) {
           />
         </label>
 
-        {mode === 'pro' && (
+        {isRegistering && mode === 'pro' && (
           <>
             <label className="form-label">
               Che lavoro fai?
@@ -177,7 +224,11 @@ function Login({ onLoginClient, onLoginPro }) {
         {errorMsg && <p className="error-text">{errorMsg}</p>}
 
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Caricamento...' : mode === 'client' ? 'Entra' : 'Crea profilo professionista'}
+          {loading
+            ? 'Caricamento...'
+            : isRegistering
+            ? mode === 'client' ? 'Registrati' : 'Crea profilo professionista'
+            : 'Accedi'}
         </button>
       </form>
     </div>
