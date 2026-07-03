@@ -58,7 +58,6 @@ function App() {
         return
       }
 
-      // Conta quanti professionisti per categoria
       const counts = {}
       data.forEach((row) => {
         const cat = row.category.trim()
@@ -67,7 +66,6 @@ function App() {
         }
       })
 
-      // Trasforma in lista ordinata per numero di professionisti (decrescente)
       const list = Object.entries(counts)
         .map(([name, count]) => ({
           id: name.toLowerCase(),
@@ -125,7 +123,6 @@ function App() {
     setOpenChatRequest(null)
   }
 
-  // Carica lo storico richieste del cliente quando apre la tab "Storico"
   useEffect(() => {
     if (user && user.type === 'client' && activeTab === 'storico') {
       fetchMyRequests()
@@ -166,7 +163,6 @@ function App() {
     )
   }
 
-  // Se il cliente ha aperto una chat da una richiesta nello storico
   if (openChatRequest) {
     return (
       <Chat
@@ -177,7 +173,6 @@ function App() {
     )
   }
 
-  // Le categorie da mostrare: prime 8, o tutte se espanso
   const visibleCategories = showAllCategories ? categories : categories.slice(0, 8)
 
   return (
@@ -238,8 +233,6 @@ function App() {
               </button>
             )}
           </section>
-
-          
         </>
       )}
 
@@ -309,48 +302,48 @@ function App() {
         </section>
       )}
 
-    <nav className="bottom-nav">
-  <button
-    className={activeTab === 'home' ? 'nav-item active' : 'nav-item'}
-    onClick={() => setActiveTab('home')}
-  >
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-    <span>Home</span>
-  </button>
-  <button
-    className={activeTab === 'storico' ? 'nav-item active' : 'nav-item'}
-    onClick={() => setActiveTab('storico')}
-  >
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
-      <polyline points="3 3 3 8 8 8" />
-      <polyline points="12 7 12 12 15 15" />
-    </svg>
-    <span>Storico</span>
-  </button>
-  <button
-    className={activeTab === 'chat' ? 'nav-item active' : 'nav-item'}
-    onClick={() => setActiveTab('chat')}
-  >
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
-    </svg>
-    <span>Chat</span>
-  </button>
-  <button
-    className={activeTab === 'profilo' ? 'nav-item active' : 'nav-item'}
-    onClick={() => setActiveTab('profilo')}
-  >
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-    <span>Profilo</span>
-  </button>
-</nav>  
+      <nav className="bottom-nav">
+        <button
+          className={activeTab === 'home' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('home')}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+          <span>Home</span>
+        </button>
+        <button
+          className={activeTab === 'storico' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('storico')}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+            <polyline points="3 3 3 8 8 8" />
+            <polyline points="12 7 12 12 15 15" />
+          </svg>
+          <span>Storico</span>
+        </button>
+        <button
+          className={activeTab === 'chat' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('chat')}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+          </svg>
+          <span>Chat</span>
+        </button>
+        <button
+          className={activeTab === 'profilo' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('profilo')}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span>Profilo</span>
+        </button>
+      </nav>
     </div>
   )
 }
