@@ -216,7 +216,13 @@ function App() {
     )
   }
 
-  const visibleCategories = showAllCategories ? categories : categories.slice(0, 8)
+ const filteredCategories = searchText.trim()
+  ? categories.filter((cat) =>
+      cat.name.toLowerCase().includes(searchText.trim().toLowerCase())
+    )
+  : categories
+
+const visibleCategories = showAllCategories ? filteredCategories : filteredCategories.slice(0, 8)
 
   return (
     <div className="app-shell">
@@ -251,31 +257,47 @@ function App() {
           </div>
 
           <section className="section">
-            <h2 className="section-title">Categorie</h2>
-            <div className="cat-grid">
-              {visibleCategories.map((cat) => (
-                <button
-                  key={cat.id}
-                  className="cat-card"
-                  onClick={() => setSelectedCategory(cat)}
-                >
-                  <span className="cat-name">{cat.name}</span>
-                  <span className="cat-available">
-                    {cat.available} {cat.available === 1 ? 'disponibile' : 'disponibili'}
-                  </span>
-                </button>
-              ))}
-            </div>
+  <h2 className="section-title">
+    {searchText.trim() ? `Risultati per "${searchText}"` : 'Categorie'}
+  </h2>
 
-            {categories.length > 8 && (
-              <button
-                className="see-all-btn"
-                onClick={() => setShowAllCategories(!showAllCategories)}
-              >
-                {showAllCategories ? 'Mostra meno' : 'Vedi tutte le categorie'}
-              </button>
-            )}
-          </section>
+  {searchText.trim() && visibleCategories.length === 0 && (
+    <p className="empty-text">Nessuna categoria trovata. Prova un altro termine.</p>
+  )}
+
+  <div className="cat-grid">
+    {visibleCategories.map((cat) => (
+      <button
+        key={cat.id}
+        className="cat-card"
+        onClick={() => setSelectedCategory(cat)}
+      >
+        <span className="cat-name">{cat.name}</span>
+        <span className="cat-available">
+          {cat.available} {cat.available === 1 ? 'disponibile' : 'disponibili'}
+        </span>
+      </button>
+    ))}
+  </div>
+
+  {!searchText.trim() && categories.length > 8 && (
+    <button
+      className="see-all-btn"
+      onClick={() => setShowAllCategories(!showAllCategories)}
+    >
+      {showAllCategories ? 'Mostra meno' : 'Vedi tutte le categorie'}
+    </button>
+  )}
+
+  {searchText.trim() && (
+    <button
+      className="see-all-btn"
+      onClick={() => setSearchText('')}
+    >
+      Cancella ricerca
+    </button>
+  )}
+</section>
         </>
       )}
 
