@@ -1,15 +1,6 @@
 .header {
   padding: 24px 20px 8px;
   text-align: center;
-  background: var(--color-accent);
-}
-
-.header .logo {
-  color: white;
-}
-
-.header .tagline {
-  color: rgba(255, 255, 255, 0.85);
 }
 
 .logo {
@@ -154,7 +145,7 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 430px;
-  background: var(--color-surface);
+  background: var(--color-accent);
   z-index: 10;
 }
 
