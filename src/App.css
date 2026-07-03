@@ -125,3 +125,53 @@
   cursor: pointer;
   font-family: inherit;
 }
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.request-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.request-info strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-transform: capitalize;
+}
+
+.request-info p {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 4px 0;
+}
+
+.request-status {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.open-chat-btn {
+  align-self: flex-start;
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.open-chat-btn:hover {
+  opacity: 0.9;
+}
