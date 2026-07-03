@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient.js'
+import Chat from './Chat.jsx'
 import './ProDashboard.css'
 
 function ProDashboard({ proName, proCategory, onBack }) {
@@ -8,6 +9,9 @@ function ProDashboard({ proName, proCategory, onBack }) {
   const [loading, setLoading] = useState(true)
   const [acceptedJob, setAcceptedJob] = useState(null)
   const [activeTab, setActiveTab] = useState('home')
+  const [myJobs, setMyJobs] = useState([])
+  const [loadingJobs, setLoadingJobs] = useState(false)
+  const [openChatRequest, setOpenChatRequest] = useState(null)
 
   async function loadRequests() {
     setLoading(true)
@@ -35,6 +39,33 @@ function ProDashboard({ proName, proCategory, onBack }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [available])
+
+  // Carica i lavori accettati da questo professionista quando apre la tab Storico
+  useEffect(() => {
+    if (activeTab === 'storico') {
+      loadMyJobs()
+    }
+  }, [activeTab])
+
+  async function loadMyJobs() {
+    setLoadingJobs(true)
+    let query = supabase
+      .from('requests')
+      .select('*')
+      .eq('status', 'accettata')
+      .order('created_at', { ascending: false })
+
+    if (proCategory) {
+      query = query.eq('category', proCategory)
+    }
+
+    const { data, error } = await query
+
+    if (!error && data) {
+      setMyJobs(data)
+    }
+    setLoadingJobs(false)
+  }
 
   async function handleAccept(request) {
     const { error } = await supabase
@@ -71,17 +102,28 @@ function ProDashboard({ proName, proCategory, onBack }) {
     )
   }
 
+  // Se il professionista ha aperto una chat da un lavoro accettato
+  if (openChatRequest) {
+    return (
+      <Chat
+        requestId={openChatRequest.id}
+        senderName={proName}
+        onBack={() => setOpenChatRequest(null)}
+      />
+    )
+  }
+
   return (
     <div className="app-shell">
       <header className="pro-header">
-  <button className="back-btn" onClick={onBack}>
-    ← Esci
-  </button>
-  <div className="pro-header-center">
-    <h1 className="form-title">LEST Pro</h1>
-    <p className="form-sub">Ciao {proName || 'Professionista'}!</p>
-  </div>
-</header>
+        <button className="back-btn" onClick={onBack}>
+          ← Esci
+        </button>
+        <div className="pro-header-center">
+          <h1 className="form-title">LEST Pro</h1>
+          <p className="form-sub">Ciao {proName || 'Professionista'}!</p>
+        </div>
+      </header>
 
       {activeTab === 'home' && (
         <>
@@ -151,8 +193,32 @@ function ProDashboard({ proName, proCategory, onBack }) {
 
       {activeTab === 'storico' && (
         <section className="section">
-          <h2 className="section-title">Storico lavori</h2>
-          <p className="empty-text">Presto qui vedrai i lavori completati.</p>
+          <h2 className="section-title">Lavori accettati</h2>
+
+          {loadingJobs && <p className="empty-text">Caricamento...</p>}
+
+          {!loadingJobs && myJobs.length === 0 && (
+            <p className="empty-text">Non hai ancora accettato nessun lavoro.</p>
+          )}
+
+          {!loadingJobs &&
+            myJobs.map((job) => (
+              <div key={job.id} className="request-card">
+                <div className="req-top">
+                  <div className="req-title">{job.description}</div>
+                </div>
+                <div className="req-addr">{job.address}</div>
+                <div className="req-bottom">
+                  <div className="req-price">Cliente: {job.client_name}</div>
+                </div>
+                <button
+                  className="btn-primary"
+                  onClick={() => setOpenChatRequest(job)}
+                >
+                  Apri chat con il cliente
+                </button>
+              </div>
+            ))}
         </section>
       )}
 
@@ -160,7 +226,7 @@ function ProDashboard({ proName, proCategory, onBack }) {
         <section className="section">
           <h2 className="section-title">Chat</h2>
           <p className="empty-text">
-            Apri una chat da un lavoro accettato per parlare con il cliente.
+            Apri una chat dalla tab "Storico" per parlare con il cliente di un lavoro accettato.
           </p>
         </section>
       )}
@@ -175,47 +241,47 @@ function ProDashboard({ proName, proCategory, onBack }) {
       )}
 
       <nav className="bottom-nav">
-  <button
-    className={activeTab === 'home' ? 'nav-item active' : 'nav-item'}
-    onClick={() => setActiveTab('home')}
-  >
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-    <span>Home</span>
-  </button>
-  <button
-    className={activeTab === 'storico' ? 'nav-item active' : 'nav-item'}
-    onClick={() => setActiveTab('storico')}
-  >
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
-      <polyline points="3 3 3 8 8 8" />
-      <polyline points="12 7 12 12 15 15" />
-    </svg>
-    <span>Storico</span>
-  </button>
-  <button
-    className={activeTab === 'chat' ? 'nav-item active' : 'nav-item'}
-    onClick={() => setActiveTab('chat')}
-  >
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
-    </svg>
-    <span>Chat</span>
-  </button>
-  <button
-    className={activeTab === 'profilo' ? 'nav-item active' : 'nav-item'}
-    onClick={() => setActiveTab('profilo')}
-  >
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-    <span>Profilo</span>
-  </button>
-</nav>
+        <button
+          className={activeTab === 'home' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('home')}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+          <span>Home</span>
+        </button>
+        <button
+          className={activeTab === 'storico' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('storico')}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+            <polyline points="3 3 3 8 8 8" />
+            <polyline points="12 7 12 12 15 15" />
+          </svg>
+          <span>Storico</span>
+        </button>
+        <button
+          className={activeTab === 'chat' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('chat')}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+          </svg>
+          <span>Chat</span>
+        </button>
+        <button
+          className={activeTab === 'profilo' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('profilo')}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span>Profilo</span>
+        </button>
+      </nav>
     </div>
   )
 }
