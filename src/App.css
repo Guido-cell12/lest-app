@@ -187,3 +187,52 @@
 .app-shell {
   padding-bottom: 70px;
 }
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.mic-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.mic-btn:hover {
+  color: var(--color-accent);
+}
+
+.see-all-btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  background: var(--color-accent-bg);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-family: inherit;
+}

@@ -6,39 +6,107 @@ import Chat from './Chat.jsx'
 import { supabase } from './supabaseClient.js'
 import './App.css'
 
-const categories = [
-  { id: 'idraulico', name: 'Idraulico', available: 3 },
-  { id: 'elettricista', name: 'Elettricista', available: 5 },
-  { id: 'imbianchino', name: 'Imbianchino', available: 2 },
-  { id: 'muratore', name: 'Muratore', available: 1 },
+// Categorie di riserva se il database è vuoto
+const fallbackCategories = [
+  { id: 'idraulico', name: 'Idraulico', available: 0 },
+  { id: 'elettricista', name: 'Elettricista', available: 0 },
+  { id: 'imbianchino', name: 'Imbianchino', available: 0 },
+  { id: 'muratore', name: 'Muratore', available: 0 },
 ]
 
 function App() {
-const [user, setUser] = useState(() => {
-  const savedGuest = localStorage.getItem('lest_guest_user')
-  if (savedGuest) {
-    return { type: 'client', ...JSON.parse(savedGuest) }
-  }
-  return null
-})
+  const [user, setUser] = useState(() => {
+    const savedGuest = localStorage.getItem('lest_guest_user')
+    if (savedGuest) {
+      return { type: 'client', ...JSON.parse(savedGuest) }
+    }
+    return null
+  })
   const [activeTab, setActiveTab] = useState('home')
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [myRequests, setMyRequests] = useState([])
   const [loadingRequests, setLoadingRequests] = useState(false)
   const [openChatRequest, setOpenChatRequest] = useState(null)
+  const [categories, setCategories] = useState([])
+  const [showAllCategories, setShowAllCategories] = useState(false)
+  const [searchText, setSearchText] = useState('')
 
   useEffect(() => {
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session && !user) {
-      const googleUser = session.user
-      setUser({
-        type: 'client',
-        name: googleUser.user_metadata?.full_name || googleUser.email,
-        email: googleUser.email,
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && !user) {
+        const googleUser = session.user
+        setUser({
+          type: 'client',
+          name: googleUser.user_metadata?.full_name || googleUser.email,
+          email: googleUser.email,
+        })
+      }
+    })
+  }, [])
+
+  // Carica le categorie reali dal database (professionisti registrati)
+  useEffect(() => {
+    async function fetchCategories() {
+      const { data, error } = await supabase
+        .from('users')
+        .select('category')
+        .eq('type', 'pro')
+        .not('category', 'is', null)
+
+      if (error || !data || data.length === 0) {
+        setCategories(fallbackCategories)
+        return
+      }
+
+      // Conta quanti professionisti per categoria
+      const counts = {}
+      data.forEach((row) => {
+        const cat = row.category.trim()
+        if (cat) {
+          counts[cat] = (counts[cat] || 0) + 1
+        }
       })
+
+      // Trasforma in lista ordinata per numero di professionisti (decrescente)
+      const list = Object.entries(counts)
+        .map(([name, count]) => ({
+          id: name.toLowerCase(),
+          name,
+          available: count,
+        }))
+        .sort((a, b) => b.available - a.available)
+
+      setCategories(list)
     }
-  })
-}, [])
+
+    fetchCategories()
+  }, [])
+
+  function handleVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+
+    if (!SpeechRecognition) {
+      alert('La dettatura vocale non è supportata su questo browser. Prova con Chrome.')
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'it-IT'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+
+    recognition.onresult = (event) => {
+      const spokenText = event.results[0][0].transcript
+      setSearchText(spokenText)
+    }
+
+    recognition.onerror = () => {
+      alert('Non sono riuscito a sentirti bene, riprova.')
+    }
+
+    recognition.start()
+  }
+
   function handleLoginClient(data) {
     setUser({ type: 'client', ...data })
   }
@@ -47,15 +115,15 @@ const [user, setUser] = useState(() => {
     setUser({ type: 'pro', ...data })
   }
 
- async function handleLogout() {
-  localStorage.removeItem('lest_guest_user')
-  await supabase.auth.signOut()
-  setUser(null)
-  setSelectedCategory(null)
-  setActiveTab('home')
-  setMyRequests([])
-  setOpenChatRequest(null)
-}
+  async function handleLogout() {
+    localStorage.removeItem('lest_guest_user')
+    await supabase.auth.signOut()
+    setUser(null)
+    setSelectedCategory(null)
+    setActiveTab('home')
+    setMyRequests([])
+    setOpenChatRequest(null)
+  }
 
   // Carica lo storico richieste del cliente quando apre la tab "Storico"
   useEffect(() => {
@@ -109,37 +177,66 @@ const [user, setUser] = useState(() => {
     )
   }
 
+  // Le categorie da mostrare: prime 8, o tutte se espanso
+  const visibleCategories = showAllCategories ? categories : categories.slice(0, 8)
+
   return (
     <div className="app-shell">
       <header className="header">
         <h1 className="logo">LEST</h1>
-        <p className="tagline">Ciao {user.name}, di cosa hai bisogno?</p>
+        <p className="tagline">Ciao {user.name}!</p>
       </header>
 
       {activeTab === 'home' && (
         <>
           <div className="search-bar">
-            <span>Di cosa hai bisogno?</span>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Descrivi il tuo problema"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+            <button
+              type="button"
+              className="mic-btn"
+              onClick={handleVoiceInput}
+              aria-label="Detta il problema a voce"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+            </button>
           </div>
 
           <section className="section">
             <h2 className="section-title">Categorie</h2>
             <div className="cat-grid">
-              {categories.map((cat) => (
+              {visibleCategories.map((cat) => (
                 <button
                   key={cat.id}
                   className="cat-card"
                   onClick={() => setSelectedCategory(cat)}
                 >
                   <span className="cat-name">{cat.name}</span>
-                  <span className="cat-available">{cat.available} disponibili</span>
+                  <span className="cat-available">
+                    {cat.available} {cat.available === 1 ? 'disponibile' : 'disponibili'}
+                  </span>
                 </button>
               ))}
             </div>
-          </section>
 
-          <section className="section map-section">
-            <span className="map-text">Milano, Lombardia</span>
+            {categories.length > 8 && (
+              <button
+                className="see-all-btn"
+                onClick={() => setShowAllCategories(!showAllCategories)}
+              >
+                {showAllCategories ? 'Mostra meno' : 'Vedi tutte le categorie'}
+              </button>
+            )}
           </section>
 
           <button className="pro-mode-link" onClick={handleLogout}>
