@@ -146,3 +146,25 @@
   font-family: inherit;
   padding: 8px;
 }
+.welcome-tagline-big {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 28px;
+}
+
+.welcome-buttons-spaced {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+.guest-btn-spaced {
+  margin-top: 24px;
+}
+
+.back-footer {
+  margin-top: auto;
+  padding-top: 40px;
+}

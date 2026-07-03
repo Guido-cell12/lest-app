@@ -153,36 +153,38 @@ function Login({ onLoginClient, onLoginPro }) {
         </header>
 
         <div className="welcome-screen">
-          <p className="welcome-tagline">Come vuoi continuare?</p>
-          <div className="welcome-buttons">
-            <button
-              className="welcome-btn primary"
-              onClick={() => { setIsRegistering(true); setClientStep('form') }}
-            >
-              Registrati
-            </button>
-            <button
-              className="welcome-btn primary"
-              onClick={() => { setIsRegistering(false); setClientStep('form') }}
-            >
-              Accedi
-            </button>
-            <button className="welcome-btn primary" onClick={handleGoogleLogin}>
-              Accedi con Google
-            </button>
-          </div>
+  <p className="welcome-tagline-big">Come vuoi continuare?</p>
+  <div className="welcome-buttons-spaced">
+    <button
+      className="welcome-btn primary"
+      onClick={() => { setIsRegistering(true); setClientStep('form') }}
+    >
+      Registrati
+    </button>
+    <button
+      className="welcome-btn primary"
+      onClick={() => { setIsRegistering(false); setClientStep('form') }}
+    >
+      Accedi
+    </button>
+    <button className="welcome-btn primary" onClick={handleGoogleLogin}>
+      Accedi con Google
+    </button>
+  </div>
 
-          {errorMsg && <p className="error-text">{errorMsg}</p>}
+  {errorMsg && <p className="error-text">{errorMsg}</p>}
 
-          <button className="guest-btn" onClick={() => { setErrorMsg(''); setClientStep('guest') }}>
-            Continua come ospite
-          </button>
+  <button className="guest-btn guest-btn-spaced" onClick={() => { setErrorMsg(''); setClientStep('guest') }}>
+    Continua come ospite
+  </button>
 
-          <button className="pro-mode-link" onClick={resetToStart}>
-            ← Indietro
-          </button>
-        </div>
+  <div className="back-footer">
+        <button className="pro-mode-link" onClick={resetToStart}>
+          ← Indietro
+        </button>
       </div>
+    </div>
+  </div>
     )
   }
 
