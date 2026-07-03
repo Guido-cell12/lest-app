@@ -276,6 +276,20 @@ function App() {
         </section>
       )}
 
+      {activeTab === 'profilo' && (
+        <section className="section">
+          <h2 className="section-title">Profilo</h2>
+          <div className="profile-info">
+            <p className="profile-name">{user.name}</p>
+            {user.email && <p className="profile-email">{user.email}</p>}
+            {user.isGuest && <p className="profile-guest">Stai usando LEST come ospite</p>}
+          </div>
+          <button className="pro-mode-link" onClick={handleLogout}>
+            Esci
+          </button>
+        </section>
+      )}
+
       <nav className="bottom-nav">
         <button
           className={activeTab === 'home' ? 'nav-item active' : 'nav-item'}
