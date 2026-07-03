@@ -236,3 +236,30 @@
   cursor: pointer;
   font-family: inherit;
 }
+
+.profile-info {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.profile-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.profile-email {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 4px 0 0;
+}
+
+.profile-guest {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 6px 0 0;
+}
