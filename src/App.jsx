@@ -14,13 +14,31 @@ const categories = [
 ]
 
 function App() {
-  const [user, setUser] = useState(null) // { type: 'client' | 'pro', ...dati }
+const [user, setUser] = useState(() => {
+  const savedGuest = localStorage.getItem('lest_guest_user')
+  if (savedGuest) {
+    return { type: 'client', ...JSON.parse(savedGuest) }
+  }
+  return null
+})
   const [activeTab, setActiveTab] = useState('home')
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [myRequests, setMyRequests] = useState([])
   const [loadingRequests, setLoadingRequests] = useState(false)
   const [openChatRequest, setOpenChatRequest] = useState(null)
 
+  useEffect(() => {
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session && !user) {
+      const googleUser = session.user
+      setUser({
+        type: 'client',
+        name: googleUser.user_metadata?.full_name || googleUser.email,
+        email: googleUser.email,
+      })
+    }
+  })
+}, [])
   function handleLoginClient(data) {
     setUser({ type: 'client', ...data })
   }
@@ -29,13 +47,15 @@ function App() {
     setUser({ type: 'pro', ...data })
   }
 
-  function handleLogout() {
-    setUser(null)
-    setSelectedCategory(null)
-    setActiveTab('home')
-    setMyRequests([])
-    setOpenChatRequest(null)
-  }
+ async function handleLogout() {
+  localStorage.removeItem('lest_guest_user')
+  await supabase.auth.signOut()
+  setUser(null)
+  setSelectedCategory(null)
+  setActiveTab('home')
+  setMyRequests([])
+  setOpenChatRequest(null)
+}
 
   // Carica lo storico richieste del cliente quando apre la tab "Storico"
   useEffect(() => {
