@@ -76,7 +76,7 @@
   font-weight: 600;
 }
 
-
+.category-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
