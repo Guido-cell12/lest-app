@@ -7,6 +7,7 @@ function ProDashboard({ proName, proCategory, onBack }) {
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [acceptedJob, setAcceptedJob] = useState(null)
+  const [activeTab, setActiveTab] = useState('home')
 
   async function loadRequests() {
     setLoading(true)
@@ -80,67 +81,123 @@ function ProDashboard({ proName, proCategory, onBack }) {
         <p className="form-sub">Ciao {proName || 'Professionista'}</p>
       </header>
 
-      <div className="toggle-row">
-        <div>
-          <div className="toggle-label">Sono disponibile</div>
-          <div className="toggle-sub">Ricevi richieste nella tua zona</div>
-        </div>
-        <button
-          className={available ? 'toggle on' : 'toggle off'}
-          onClick={() => setAvailable(!available)}
-          aria-label="Disponibilità"
-        >
-          <div className="toggle-dot" />
-        </button>
-      </div>
-
-      <div className="pro-stat-row">
-        <div className="pro-stat">
-          <div className="pro-stat-num">{proCategory || '—'}</div>
-          <div className="pro-stat-label">Categoria</div>
-        </div>
-        <div className="pro-stat">
-          <div className="pro-stat-num">{requests.length}</div>
-          <div className="pro-stat-label">In attesa</div>
-        </div>
-      </div>
-
-      <section className="section">
-        <h2 className="section-title">Richieste vicino a te</h2>
-
-        {!available && (
-          <p className="empty-text">
-            Sei offline. Attiva la disponibilità per vedere le richieste.
-          </p>
-        )}
-
-        {available && loading && <p className="empty-text">Caricamento...</p>}
-
-        {available && !loading && requests.length === 0 && (
-          <p className="empty-text">Nessuna richiesta al momento. Torna più tardi.</p>
-        )}
-
-        {available &&
-          !loading &&
-          requests.map((req) => (
-            <div key={req.id} className="request-card">
-              <div className="req-top">
-                <div className="req-title">{req.description}</div>
-                <div className="badge badge-new">Nuova</div>
-              </div>
-              <div className="req-addr">{req.address}</div>
-              <div className="req-bottom">
-                <div className="req-price">Urgenza: {req.urgency}</div>
-              </div>
-              <button className="btn-primary" onClick={() => handleAccept(req)}>
-                Accetta richiesta
-              </button>
-              <button className="btn-secondary" onClick={() => handleDecline(req)}>
-                Rifiuta
-              </button>
+      {activeTab === 'home' && (
+        <>
+          <div className="toggle-row">
+            <div>
+              <div className="toggle-label">Sono disponibile</div>
+              <div className="toggle-sub">Ricevi richieste nella tua zona</div>
             </div>
-          ))}
-      </section>
+            <button
+              className={available ? 'toggle on' : 'toggle off'}
+              onClick={() => setAvailable(!available)}
+              aria-label="Disponibilità"
+            >
+              <div className="toggle-dot" />
+            </button>
+          </div>
+
+          <div className="pro-stat-row">
+            <div className="pro-stat">
+              <div className="pro-stat-num">{proCategory || '—'}</div>
+              <div className="pro-stat-label">Categoria</div>
+            </div>
+            <div className="pro-stat">
+              <div className="pro-stat-num">{requests.length}</div>
+              <div className="pro-stat-label">In attesa</div>
+            </div>
+          </div>
+
+          <section className="section">
+            <h2 className="section-title">Richieste vicino a te</h2>
+
+            {!available && (
+              <p className="empty-text">
+                Sei offline. Attiva la disponibilità per vedere le richieste.
+              </p>
+            )}
+
+            {available && loading && <p className="empty-text">Caricamento...</p>}
+
+            {available && !loading && requests.length === 0 && (
+              <p className="empty-text">Nessuna richiesta al momento. Torna più tardi.</p>
+            )}
+
+            {available &&
+              !loading &&
+              requests.map((req) => (
+                <div key={req.id} className="request-card">
+                  <div className="req-top">
+                    <div className="req-title">{req.description}</div>
+                    <div className="badge badge-new">Nuova</div>
+                  </div>
+                  <div className="req-addr">{req.address}</div>
+                  <div className="req-bottom">
+                    <div className="req-price">Urgenza: {req.urgency}</div>
+                  </div>
+                  <button className="btn-primary" onClick={() => handleAccept(req)}>
+                    Accetta richiesta
+                  </button>
+                  <button className="btn-secondary" onClick={() => handleDecline(req)}>
+                    Rifiuta
+                  </button>
+                </div>
+              ))}
+          </section>
+        </>
+      )}
+
+      {activeTab === 'storico' && (
+        <section className="section">
+          <h2 className="section-title">Storico lavori</h2>
+          <p className="empty-text">Presto qui vedrai i lavori completati.</p>
+        </section>
+      )}
+
+      {activeTab === 'chat' && (
+        <section className="section">
+          <h2 className="section-title">Chat</h2>
+          <p className="empty-text">
+            Apri una chat da un lavoro accettato per parlare con il cliente.
+          </p>
+        </section>
+      )}
+
+      {activeTab === 'profilo' && (
+        <section className="section">
+          <h2 className="section-title">Profilo</h2>
+          <p className="empty-text">
+            {proName} — {proCategory}
+          </p>
+        </section>
+      )}
+
+      <nav className="bottom-nav">
+        <button
+          className={activeTab === 'home' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('home')}
+        >
+          Home
+        </button>
+        <button
+          className={activeTab === 'storico' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('storico')}
+        >
+          Storico
+        </button>
+        <button
+          className={activeTab === 'chat' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('chat')}
+        >
+          Chat
+        </button>
+        <button
+          className={activeTab === 'profilo' ? 'nav-item active' : 'nav-item'}
+          onClick={() => setActiveTab('profilo')}
+        >
+          Profilo
+        </button>
+      </nav>
     </div>
   )
 }
