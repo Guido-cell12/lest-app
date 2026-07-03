@@ -152,39 +152,41 @@ function Login({ onLoginClient, onLoginPro }) {
           <h1 className="logo">LEST</h1>
         </header>
 
-        <div className="welcome-screen">
-  <p className="welcome-tagline-big">Come vuoi continuare?</p>
-  <div className="welcome-buttons-spaced">
-    <button
-      className="welcome-btn primary"
-      onClick={() => { setIsRegistering(true); setClientStep('form') }}
-    >
-      Registrati
-    </button>
-    <button
-      className="welcome-btn primary"
-      onClick={() => { setIsRegistering(false); setClientStep('form') }}
-    >
-      Accedi
-    </button>
-    <button className="welcome-btn primary" onClick={handleGoogleLogin}>
-      Accedi con Google
+       <div className="welcome-screen">
+  <div className="centered-block">
+    <p className="welcome-tagline-big">Come vuoi continuare?</p>
+    <div className="welcome-buttons-spaced">
+      <button
+        className="welcome-btn primary"
+        onClick={() => { setIsRegistering(true); setClientStep('form') }}
+      >
+        Registrati
+      </button>
+      <button
+        className="welcome-btn primary"
+        onClick={() => { setIsRegistering(false); setClientStep('form') }}
+      >
+        Accedi
+      </button>
+      <button className="welcome-btn primary" onClick={handleGoogleLogin}>
+        Accedi con Google
+      </button>
+    </div>
+
+    {errorMsg && <p className="error-text">{errorMsg}</p>}
+
+    <button className="guest-btn guest-btn-spaced" onClick={() => { setErrorMsg(''); setClientStep('guest') }}>
+      Continua come ospite
     </button>
   </div>
-
-  {errorMsg && <p className="error-text">{errorMsg}</p>}
-
-  <button className="guest-btn guest-btn-spaced" onClick={() => { setErrorMsg(''); setClientStep('guest') }}>
-    Continua come ospite
-  </button>
 
   <div className="back-footer">
-        <button className="pro-mode-link" onClick={resetToStart}>
-          ← Indietro
-        </button>
-      </div>
-    </div>
+    <button className="pro-mode-link" onClick={resetToStart}>
+      ← Indietro
+    </button>
   </div>
+</div>
+      </div>
     )
   }
 
