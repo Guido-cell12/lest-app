@@ -12,6 +12,8 @@ function ProDashboard({ proName, proCategory, onBack }) {
   const [myJobs, setMyJobs] = useState([])
   const [loadingJobs, setLoadingJobs] = useState(false)
   const [openChatRequest, setOpenChatRequest] = useState(null)
+  const [conversations, setConversations] = useState([])
+  const [loadingConversations, setLoadingConversations] = useState(false)
 
   async function loadRequests() {
     setLoading(true)
@@ -40,10 +42,12 @@ function ProDashboard({ proName, proCategory, onBack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [available])
 
-  // Carica i lavori accettati da questo professionista quando apre la tab Storico
   useEffect(() => {
     if (activeTab === 'storico') {
       loadMyJobs()
+    }
+    if (activeTab === 'chat') {
+      fetchConversations()
     }
   }, [activeTab])
 
@@ -65,6 +69,47 @@ function ProDashboard({ proName, proCategory, onBack }) {
       setMyJobs(data)
     }
     setLoadingJobs(false)
+  }
+
+  async function fetchConversations() {
+    setLoadingConversations(true)
+
+    let query = supabase
+      .from('requests')
+      .select('*')
+      .eq('status', 'accettata')
+      .order('id', { ascending: false })
+
+    if (proCategory) {
+      query = query.eq('category', proCategory)
+    }
+
+    const { data: acceptedRequests, error } = await query
+
+    if (error || !acceptedRequests) {
+      setLoadingConversations(false)
+      return
+    }
+
+    const withLastMessage = await Promise.all(
+      acceptedRequests.map(async (req) => {
+        const { data: lastMsg } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('request_id', req.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        return {
+          ...req,
+          lastMessage: lastMsg?.content || 'Nessun messaggio ancora',
+        }
+      })
+    )
+
+    setConversations(withLastMessage)
+    setLoadingConversations(false)
   }
 
   async function handleAccept(request) {
@@ -102,7 +147,6 @@ function ProDashboard({ proName, proCategory, onBack }) {
     )
   }
 
-  // Se il professionista ha aperto una chat da un lavoro accettato
   if (openChatRequest) {
     return (
       <Chat
@@ -211,12 +255,6 @@ function ProDashboard({ proName, proCategory, onBack }) {
                 <div className="req-bottom">
                   <div className="req-price">Cliente: {job.client_name}</div>
                 </div>
-                <button
-                  className="btn-primary"
-                  onClick={() => setOpenChatRequest(job)}
-                >
-                  Apri chat con il cliente
-                </button>
               </div>
             ))}
         </section>
@@ -225,9 +263,30 @@ function ProDashboard({ proName, proCategory, onBack }) {
       {activeTab === 'chat' && (
         <section className="section">
           <h2 className="section-title">Chat</h2>
-          <p className="empty-text">
-            Apri una chat dalla tab "Storico" per parlare con il cliente di un lavoro accettato.
-          </p>
+
+          {loadingConversations && <p className="empty-text">Caricamento...</p>}
+
+          {!loadingConversations && conversations.length === 0 && (
+            <p className="empty-text">Nessuna conversazione attiva al momento.</p>
+          )}
+
+          <div className="conversations-list">
+            {conversations.map((conv) => (
+              <button
+                key={conv.id}
+                className="conversation-item"
+                onClick={() => setOpenChatRequest(conv)}
+              >
+                <div className="conversation-avatar">
+                  {conv.client_name?.charAt(0).toUpperCase()}
+                </div>
+                <div className="conversation-text">
+                  <p className="conversation-name">{conv.client_name}</p>
+                  <p className="conversation-last-msg">{conv.lastMessage}</p>
+                </div>
+              </button>
+            ))}
+          </div>
         </section>
       )}
 

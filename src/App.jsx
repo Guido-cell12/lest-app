@@ -6,7 +6,6 @@ import Chat from './Chat.jsx'
 import { supabase } from './supabaseClient.js'
 import './App.css'
 
-// Categorie di riserva se il database è vuoto
 const fallbackCategories = [
   { id: 'idraulico', name: 'Idraulico', available: 0 },
   { id: 'elettricista', name: 'Elettricista', available: 0 },
@@ -30,6 +29,8 @@ function App() {
   const [categories, setCategories] = useState([])
   const [showAllCategories, setShowAllCategories] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const [conversations, setConversations] = useState([])
+  const [loadingConversations, setLoadingConversations] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -44,7 +45,6 @@ function App() {
     })
   }, [])
 
-  // Carica le categorie reali dal database (professionisti registrati)
   useEffect(() => {
     async function fetchCategories() {
       const { data, error } = await supabase
@@ -129,6 +129,12 @@ function App() {
     }
   }, [activeTab, user])
 
+  useEffect(() => {
+    if (user && user.type === 'client' && activeTab === 'chat') {
+      fetchConversations()
+    }
+  }, [activeTab, user])
+
   async function fetchMyRequests() {
     setLoadingRequests(true)
     const { data, error } = await supabase
@@ -143,6 +149,43 @@ function App() {
       setMyRequests(data)
     }
     setLoadingRequests(false)
+  }
+
+  async function fetchConversations() {
+    setLoadingConversations(true)
+
+    const { data: acceptedRequests, error } = await supabase
+      .from('requests')
+      .select('*')
+      .eq('client_name', user.name)
+      .eq('status', 'accettata')
+      .order('id', { ascending: false })
+
+    if (error || !acceptedRequests) {
+      setLoadingConversations(false)
+      return
+    }
+
+    // Per ogni richiesta accettata, prendi l'ultimo messaggio
+    const withLastMessage = await Promise.all(
+      acceptedRequests.map(async (req) => {
+        const { data: lastMsg } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('request_id', req.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        return {
+          ...req,
+          lastMessage: lastMsg?.content || 'Nessun messaggio ancora',
+        }
+      })
+    )
+
+    setConversations(withLastMessage)
+    setLoadingConversations(false)
   }
 
   if (!user) {
@@ -254,16 +297,37 @@ function App() {
                   <p>{req.description}</p>
                   <span className="request-status">Stato: {req.status}</span>
                 </div>
-
-                {req.status === 'accettata' && (
-                  <button
-                    className="open-chat-btn"
-                    onClick={() => setOpenChatRequest(req)}
-                  >
-                    Apri chat con il professionista
-                  </button>
-                )}
               </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'chat' && (
+        <section className="section">
+          <h2 className="section-title">Chat</h2>
+
+          {loadingConversations && <p className="empty-text">Caricamento...</p>}
+
+          {!loadingConversations && conversations.length === 0 && (
+            <p className="empty-text">Nessuna conversazione attiva al momento.</p>
+          )}
+
+          <div className="conversations-list">
+            {conversations.map((conv) => (
+              <button
+                key={conv.id}
+                className="conversation-item"
+                onClick={() => setOpenChatRequest(conv)}
+              >
+                <div className="conversation-avatar">
+                  {conv.category?.charAt(0).toUpperCase()}
+                </div>
+                <div className="conversation-text">
+                  <p className="conversation-name">{conv.category}</p>
+                  <p className="conversation-last-msg">{conv.lastMessage}</p>
+                </div>
+              </button>
             ))}
           </div>
         </section>
