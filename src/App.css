@@ -93,10 +93,14 @@
   display: flex;
   border-top: 1px solid var(--color-border);
   padding: 10px 0 16px;
-  position: sticky;
+  position: fixed;
   bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
   background: var(--color-surface);
-  margin-top: auto;
+  z-index: 10;
 }
 
 .nav-item {
@@ -178,4 +182,8 @@
 
 .open-chat-btn:hover {
   opacity: 0.9;
+}
+
+.app-shell {
+  padding-bottom: 70px;
 }
