@@ -148,44 +148,43 @@ function Login({ onLoginClient, onLoginPro }) {
   if (mode === 'client' && clientStep === null) {
     return (
       <div className="app-shell">
-        <header className="header">
-          <h1 className="logo">LEST</h1>
-        </header>
+  <header className="header header-with-back">
+    <button className="icon-back-btn" onClick={resetToStart} aria-label="Indietro">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+    </button>
+    <h1 className="logo">LEST</h1>
+  </header>
 
-       <div className="welcome-screen">
-  <div className="centered-block">
-    <p className="welcome-tagline-big">Come vuoi continuare?</p>
-    <div className="welcome-buttons-spaced">
-      <button
-        className="welcome-btn primary"
-        onClick={() => { setIsRegistering(true); setClientStep('form') }}
-      >
-        Registrati
-      </button>
-      <button
-        className="welcome-btn primary"
-        onClick={() => { setIsRegistering(false); setClientStep('form') }}
-      >
-        Accedi
-      </button>
-      <button className="welcome-btn primary" onClick={handleGoogleLogin}>
-        Accedi con Google
+  <div className="welcome-screen">
+    <div className="centered-block">
+      <p className="welcome-tagline-big">Come vuoi continuare?</p>
+      <div className="welcome-buttons-spaced">
+        <button
+          className="welcome-btn primary"
+          onClick={() => { setIsRegistering(true); setClientStep('form') }}
+        >
+          Registrati
+        </button>
+        <button
+          className="welcome-btn primary"
+          onClick={() => { setIsRegistering(false); setClientStep('form') }}
+        >
+          Accedi
+        </button>
+        <button className="welcome-btn primary" onClick={handleGoogleLogin}>
+          Accedi con Google
+        </button>
+      </div>
+
+{errorMsg && <p className="error-text">{errorMsg}</p>}
+
+      <button className="guest-btn guest-btn-spaced" onClick={() => { setErrorMsg(''); setClientStep('guest') }}>
+        Continua come ospite
       </button>
     </div>
-
-    {errorMsg && <p className="error-text">{errorMsg}</p>}
-
-    <button className="guest-btn guest-btn-spaced" onClick={() => { setErrorMsg(''); setClientStep('guest') }}>
-      Continua come ospite
-    </button>
   </div>
-
-  <div className="back-footer">
-    <button className="pro-mode-link" onClick={resetToStart}>
-      ← Indietro
-    </button>
-  </div>
-</div>
       </div>
     )
   }
