@@ -10,15 +10,32 @@ function Login({ onLoginClient, onLoginPro }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('')
   const [customCategory, setCustomCategory] = useState('')
   const [city, setCity] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
 
+  function handleGuestContinue() {
+    if (!name.trim()) {
+      setErrorMsg('Scrivi il tuo nome per continuare come ospite.')
+      return
+    }
+    onLoginClient({ name, email: null, isGuest: true })
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setErrorMsg('')
+
+    if (isRegistering && password !== confirmPassword) {
+      setErrorMsg('Le password non coincidono.')
+      return
+    }
+
     setLoading(true)
 
     if (isRegistering) {
@@ -158,15 +175,49 @@ function Login({ onLoginClient, onLoginPro }) {
 
         <label className="form-label">
           Password
-          <input
-            className="form-input"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="password-field">
+            <input
+              className="form-input"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Nascondi password' : 'Mostra password'}
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </button>
+          </div>
         </label>
+
+        {isRegistering && (
+          <label className="form-label">
+            Conferma password
+            <div className="password-field">
+              <input
+                className="form-input"
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? 'Nascondi password' : 'Mostra password'}
+              >
+                {showConfirmPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
+          </label>
+        )}
 
         {isRegistering && mode === 'pro' && (
           <>
@@ -230,6 +281,12 @@ function Login({ onLoginClient, onLoginPro }) {
             ? mode === 'client' ? 'Registrati' : 'Crea profilo professionista'
             : 'Accedi'}
         </button>
+
+        {mode === 'client' && (
+          <button type="button" className="guest-btn" onClick={handleGuestContinue}>
+            Continua come ospite
+          </button>
+        )}
       </form>
     </div>
   )
