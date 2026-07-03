@@ -277,14 +277,33 @@ function App() {
       )}
 
       {activeTab === 'profilo' && (
-        <section className="section">
-          <h2 className="section-title">Profilo</h2>
-          <div className="profile-info">
-            <p className="profile-name">{user.name}</p>
-            {user.email && <p className="profile-email">{user.email}</p>}
-            {user.isGuest && <p className="profile-guest">Stai usando LEST come ospite</p>}
+        <section className="section profile-section">
+          <div className="profile-banner">
+            <div className="profile-avatar">
+              {user.name?.charAt(0).toUpperCase()}
+            </div>
+            <div className="profile-banner-text">
+              <p className="profile-banner-name">{user.name}</p>
+              {user.email && <p className="profile-banner-email">{user.email}</p>}
+            </div>
           </div>
-          <button className="pro-mode-link" onClick={handleLogout}>
+
+          <div className="profile-menu">
+            <button className="profile-menu-item" onClick={() => setActiveTab('storico')}>
+              Le mie richieste
+            </button>
+            <button className="profile-menu-item">
+              I miei dati
+            </button>
+            <button className="profile-menu-item">
+              Assistenza
+            </button>
+            <button className="profile-menu-item">
+              Info su LEST
+            </button>
+          </div>
+
+          <button className="logout-btn" onClick={handleLogout}>
             Esci
           </button>
         </section>
