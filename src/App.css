@@ -93,6 +93,10 @@
   display: flex;
   border-top: 1px solid var(--color-border);
   padding: 10px 0 16px;
+  position: sticky;
+  bottom: 0;
+  background: var(--color-surface);
+  margin-top: auto;
 }
 
 .nav-item {
