@@ -71,12 +71,52 @@ function ProDashboard({ proId, proName, proCategory, onBack }) {
   }
 
   useEffect(() => {
-    if (availableNow || availableTomorrow) {
-      loadRequests()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availableNow, availableTomorrow])
+  if (availableNow || availableTomorrow) {
+    loadRequests()
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [availableNow, availableTomorrow])
 
+// Ascolta in tempo reale gli aggiornamenti sulle richieste
+useEffect(() => {
+  const channel = supabase
+    .channel('requests-realtime')
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'requests',
+      },
+      (payload) => {
+        const updated = payload.new
+        // Se una richiesta è stata accettata (da chiunque), toglila dalla lista in attesa
+        if (updated.status !== 'in_attesa') {
+          setRequests((prev) => prev.filter((r) => r.id !== updated.id))
+        }
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'requests',
+      },
+      (payload) => {
+        const newReq = payload.new
+        // Se arriva una nuova richiesta in attesa della categoria giusta, aggiungila
+        if (newReq.status === 'in_attesa' && (!proCategory || newReq.category === proCategory)) {
+          setRequests((prev) => [newReq, ...prev])
+        }
+      }
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}, [proCategory])
   useEffect(() => {
     if (activeTab === 'storico') {
       loadMyJobs()
