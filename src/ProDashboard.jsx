@@ -87,39 +87,29 @@ function ProDashboard({ proId, proName, proCategory, onBack }) {
   }, [activeTab])
 
   async function loadMyJobs() {
-    setLoadingJobs(true)
-    let query = supabase
-      .from('requests')
-      .select('*')
-      .eq('status', 'accettata')
-      .order('created_at', { ascending: false })
+  setLoadingJobs(true)
+  const { data, error } = await supabase
+    .from('requests')
+    .select('*')
+    .eq('status', 'accettata')
+    .eq('accepted_by', proId)
+    .order('created_at', { ascending: false })
 
-    if (proCategory) {
-      query = query.eq('category', proCategory)
-    }
-
-    const { data, error } = await query
-
-    if (!error && data) {
-      setMyJobs(data)
-    }
-    setLoadingJobs(false)
+  if (!error && data) {
+    setMyJobs(data)
   }
+  setLoadingJobs(false)
+}
 
   async function fetchConversations() {
-    setLoadingConversations(true)
+  setLoadingConversations(true)
 
-    let query = supabase
-      .from('requests')
-      .select('*')
-      .eq('status', 'accettata')
-      .order('id', { ascending: false })
-
-    if (proCategory) {
-      query = query.eq('category', proCategory)
-    }
-
-    const { data: acceptedRequests, error } = await query
+  const { data: acceptedRequests, error } = await supabase
+    .from('requests')
+    .select('*')
+    .eq('status', 'accettata')
+    .eq('accepted_by', proId)
+    .order('id', { ascending: false })
 
     if (error || !acceptedRequests) {
       setLoadingConversations(false)
@@ -148,16 +138,16 @@ function ProDashboard({ proId, proName, proCategory, onBack }) {
   }
 
   async function handleAccept(request) {
-    const { error } = await supabase
-      .from('requests')
-      .update({ status: 'accettata' })
-      .eq('id', request.id)
+  const { error } = await supabase
+    .from('requests')
+    .update({ status: 'accettata', accepted_by: proId })
+    .eq('id', request.id)
 
-    if (!error) {
-      setAcceptedJob(request)
-      setRequests((prev) => prev.filter((r) => r.id !== request.id))
-    }
+  if (!error) {
+    setAcceptedJob(request)
+    setRequests((prev) => prev.filter((r) => r.id !== request.id))
   }
+}
 
   async function handleDecline(request) {
     setRequests((prev) => prev.filter((r) => r.id !== request.id))

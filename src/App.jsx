@@ -153,40 +153,55 @@ function App() {
   }
 
   async function fetchConversations() {
-    setLoadingConversations(true)
+  setLoadingConversations(true)
 
-    const { data: acceptedRequests, error } = await supabase
-      .from('requests')
-      .select('*')
-      .eq('client_name', user.name)
-      .eq('status', 'accettata')
-      .order('id', { ascending: false })
+  const { data: acceptedRequests, error } = await supabase
+    .from('requests')
+    .select('*')
+    .eq('client_name', user.name)
+    .eq('status', 'accettata')
+    .order('id', { ascending: false })
 
-    if (error || !acceptedRequests) {
-      setLoadingConversations(false)
-      return
-    }
+  if (error || !acceptedRequests) {
+    setLoadingConversations(false)
+    return
+  }
 
-    const withLastMessage = await Promise.all(
-      acceptedRequests.map(async (req) => {
-        const { data: lastMsg } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('request_id', req.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
+  const withDetails = await Promise.all(
+    acceptedRequests.map(async (req) => {
+      const { data: lastMsg } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('request_id', req.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      let proName = req.category
+
+      if (req.accepted_by) {
+        const { data: proData } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', req.accepted_by)
           .maybeSingle()
 
-        return {
-          ...req,
-          lastMessage: lastMsg?.content || 'Nessun messaggio ancora',
+        if (proData?.name) {
+          proName = proData.name
         }
-      })
-    )
+      }
 
-    setConversations(withLastMessage)
-    setLoadingConversations(false)
-  }
+      return {
+        ...req,
+        proName,
+        lastMessage: lastMsg?.content || 'Nessun messaggio ancora',
+      }
+    })
+  )
+
+  setConversations(withDetails)
+  setLoadingConversations(false)
+}
 
   if (!user) {
     return <Login onLoginClient={handleLoginClient} onLoginPro={handleLoginPro} />
@@ -369,22 +384,22 @@ function App() {
           )}
 
           <div className="conversations-list">
-            {conversations.map((conv) => (
-              <button
-                key={conv.id}
-                className="conversation-item"
-                onClick={() => setOpenChatRequest(conv)}
-              >
-                <div className="conversation-avatar">
-                  {conv.category?.charAt(0).toUpperCase()}
-                </div>
-                <div className="conversation-text">
-                  <p className="conversation-name">{conv.category}</p>
-                  <p className="conversation-last-msg">{conv.lastMessage}</p>
-                </div>
-              </button>
-            ))}
-          </div>
+  {conversations.map((conv) => (
+    <button
+      key={conv.id}
+      className="conversation-item"
+      onClick={() => setOpenChatRequest(conv)}
+    >
+      <div className="conversation-avatar">
+        {conv.proName?.charAt(0).toUpperCase()}
+      </div>
+      <div className="conversation-text">
+        <p className="conversation-name">{conv.proName}</p>
+        <p className="conversation-last-msg">{conv.lastMessage}</p>
+      </div>
+    </button>
+  ))}
+</div>
         </section>
       )}
 
