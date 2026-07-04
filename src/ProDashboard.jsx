@@ -197,14 +197,11 @@ function ProDashboard({ proId, proName, proCategory, onBack }) {
   return (
     <div className="app-shell">
       <header className="pro-header">
-        <button className="back-btn" onClick={onBack}>
-          ← Esci
-        </button>
-        <div className="pro-header-center">
-          <h1 className="form-title">LEST Pro</h1>
-          <p className="form-sub">Ciao {proName || 'Professionista'}!</p>
-        </div>
-      </header>
+  <div className="pro-header-center">
+    <h1 className="form-title">LEST Pro</h1>
+    <p className="form-sub">Ciao {proName || 'Professionista'}!</p>
+  </div>
+</header>
 
       {activeTab === 'home' && (
         <>
