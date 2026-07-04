@@ -234,30 +234,30 @@ function App() {
 
       {activeTab === 'home' && (
         <>
-          <div className="urgency-toggle">
-            <button
-              className={urgencyMode === 'immediate' ? 'urgency-option active-immediate' : 'urgency-option'}
-              onClick={() => setUrgencyMode('immediate')}
-            >
-              ⚡ Immediato
-            </button>
-            <button
-              className={urgencyMode === 'tomorrow' ? 'urgency-option active-tomorrow' : 'urgency-option'}
-              onClick={() => setUrgencyMode('tomorrow')}
-            >
-              Domani
-            </button>
-          </div>
+         <div className="urgency-toggle">
+  <button
+    className={urgencyMode === 'immediate' ? 'urgency-option active-immediate' : 'urgency-option'}
+    onClick={() => setUrgencyMode('immediate')}
+  >
+    Immediato
+  </button>
+  <button
+    className={urgencyMode === 'tomorrow' ? 'urgency-option active-tomorrow' : 'urgency-option'}
+    onClick={() => setUrgencyMode('tomorrow')}
+  >
+    Domani
+  </button>
+</div>
 
-          {urgencyMode === 'immediate' ? (
-            <p className="urgency-note urgency-note-immediate">
-              ⚡ Intervento rapido — tariffa maggiorata
-            </p>
-          ) : (
-            <p className="urgency-note urgency-note-tomorrow">
-              Intervento programmato per domani — tariffa standard
-            </p>
-          )}
+{urgencyMode === 'immediate' ? (
+  <p className="urgency-note urgency-note-immediate">
+    Intervento immediato
+  </p>
+) : (
+  <p className="urgency-note urgency-note-tomorrow">
+    Intervento programmato per domani
+  </p>
+)} 
 
           <div className="search-bar">
             <input
