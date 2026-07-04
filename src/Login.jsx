@@ -83,7 +83,7 @@ function Login({ onLoginClient, onLoginPro }) {
       if (mode === 'client') {
         onLoginClient({ name, email })
       } else {
-        onLoginPro({ name, email, category, city })
+        onLoginPro({ name, email, category, city, id: userId })
       }
 
     } else {
@@ -113,7 +113,7 @@ function Login({ onLoginClient, onLoginPro }) {
       if (userData.type === 'client') {
         onLoginClient({ name: userData.name, email: userData.email })
       } else {
-        onLoginPro({ name: userData.name, email: userData.email, category: userData.category, city: userData.city })
+        onLoginPro({ name: userData.name, email: userData.email, category: userData.category, city: userData.city, id: userData.id })
       }
     }
   }

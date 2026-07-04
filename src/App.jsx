@@ -193,7 +193,7 @@ function App() {
   }
 
   if (user.type === 'pro') {
-    return <ProDashboard proName={user.name} proCategory={user.category} onBack={handleLogout} />
+    return <ProDashboard proId={user.id} proName={user.name} proCategory={user.category} onBack={handleLogout} />
   }
 
   if (selectedCategory) {

@@ -3,8 +3,9 @@ import { supabase } from './supabaseClient.js'
 import Chat from './Chat.jsx'
 import './ProDashboard.css'
 
-function ProDashboard({ proName, proCategory, onBack }) {
-  const [available, setAvailable] = useState(true)
+function ProDashboard({ proId, proName, proCategory, onBack }) {
+  const [availableNow, setAvailableNow] = useState(true)
+  const [availableTomorrow, setAvailableTomorrow] = useState(true)
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [acceptedJob, setAcceptedJob] = useState(null)
@@ -14,6 +15,40 @@ function ProDashboard({ proName, proCategory, onBack }) {
   const [openChatRequest, setOpenChatRequest] = useState(null)
   const [conversations, setConversations] = useState([])
   const [loadingConversations, setLoadingConversations] = useState(false)
+
+  // Carica lo stato di disponibilità salvato del professionista
+  useEffect(() => {
+    async function loadAvailability() {
+      if (!proId) return
+      const { data } = await supabase
+        .from('users')
+        .select('available_now, available_tomorrow')
+        .eq('id', proId)
+        .single()
+
+      if (data) {
+        setAvailableNow(data.available_now ?? true)
+        setAvailableTomorrow(data.available_tomorrow ?? true)
+      }
+    }
+    loadAvailability()
+  }, [proId])
+
+  async function toggleAvailableNow() {
+    const newValue = !availableNow
+    setAvailableNow(newValue)
+    if (proId) {
+      await supabase.from('users').update({ available_now: newValue }).eq('id', proId)
+    }
+  }
+
+  async function toggleAvailableTomorrow() {
+    const newValue = !availableTomorrow
+    setAvailableTomorrow(newValue)
+    if (proId) {
+      await supabase.from('users').update({ available_tomorrow: newValue }).eq('id', proId)
+    }
+  }
 
   async function loadRequests() {
     setLoading(true)
@@ -36,11 +71,11 @@ function ProDashboard({ proName, proCategory, onBack }) {
   }
 
   useEffect(() => {
-    if (available) {
+    if (availableNow || availableTomorrow) {
       loadRequests()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [available])
+  }, [availableNow, availableTomorrow])
 
   useEffect(() => {
     if (activeTab === 'storico') {
@@ -157,6 +192,8 @@ function ProDashboard({ proName, proCategory, onBack }) {
     )
   }
 
+  const isAvailable = availableNow || availableTomorrow
+
   return (
     <div className="app-shell">
       <header className="pro-header">
@@ -173,13 +210,27 @@ function ProDashboard({ proName, proCategory, onBack }) {
         <>
           <div className="toggle-row">
             <div>
-              <div className="toggle-label">Sono disponibile</div>
-              <div className="toggle-sub">Ricevi richieste nella tua zona</div>
+              <div className="toggle-label">Disponibile subito</div>
+              <div className="toggle-sub">Ricevi richieste urgenti</div>
             </div>
             <button
-              className={available ? 'toggle on' : 'toggle off'}
-              onClick={() => setAvailable(!available)}
-              aria-label="Disponibilità"
+              className={availableNow ? 'toggle on' : 'toggle off'}
+              onClick={toggleAvailableNow}
+              aria-label="Disponibilità immediata"
+            >
+              <div className="toggle-dot" />
+            </button>
+          </div>
+
+          <div className="toggle-row">
+            <div>
+              <div className="toggle-label">Disponibile domani</div>
+              <div className="toggle-sub">Ricevi richieste programmate</div>
+            </div>
+            <button
+              className={availableTomorrow ? 'toggle on' : 'toggle off'}
+              onClick={toggleAvailableTomorrow}
+              aria-label="Disponibilità domani"
             >
               <div className="toggle-dot" />
             </button>
@@ -199,19 +250,19 @@ function ProDashboard({ proName, proCategory, onBack }) {
           <section className="section">
             <h2 className="section-title">Richieste vicino a te</h2>
 
-            {!available && (
+            {!isAvailable && (
               <p className="empty-text">
-                Sei offline. Attiva la disponibilità per vedere le richieste.
+                Sei offline. Attiva almeno una disponibilità per vedere le richieste.
               </p>
             )}
 
-            {available && loading && <p className="empty-text">Caricamento...</p>}
+            {isAvailable && loading && <p className="empty-text">Caricamento...</p>}
 
-            {available && !loading && requests.length === 0 && (
+            {isAvailable && !loading && requests.length === 0 && (
               <p className="empty-text">Nessuna richiesta al momento. Torna più tardi.</p>
             )}
 
-            {available &&
+            {isAvailable &&
               !loading &&
               requests.map((req) => (
                 <div key={req.id} className="request-card">
