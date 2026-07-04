@@ -406,3 +406,18 @@
 .urgency-note-tomorrow {
   color: var(--color-text-muted);
 }
+
+.status-pending {
+  color: #b8860b;
+  font-weight: 600;
+}
+
+.status-progress {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.status-done {
+  color: var(--color-success);
+  font-weight: 600;
+}

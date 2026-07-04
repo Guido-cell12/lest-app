@@ -152,3 +152,35 @@
   cursor: pointer;
   flex-shrink: 0;
 }
+
+.chat-error-banner {
+  background: #fdecea;
+  color: #c0392b;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.chat-retry-btn {
+  background: #c0392b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-send-error {
+  background: #fdecea;
+  color: #c0392b;
+  font-size: 12px;
+  padding: 8px 16px;
+  text-align: center;
+}

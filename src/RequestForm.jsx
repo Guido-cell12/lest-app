@@ -2,36 +2,45 @@ import { useState } from 'react'
 import { supabase } from './supabaseClient.js'
 import './RequestForm.css'
 
-function RequestForm({ category, clientName, onBack }) {
+function RequestForm({ category, clientName, clientId, urgencyMode, onBack }) {
   const [description, setDescription] = useState('')
   const [address, setAddress] = useState('')
-  const [urgency, setUrgency] = useState('oggi')
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+
+  const urgency = urgencyMode === 'tomorrow' ? 'domani' : 'immediato'
 
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setErrorMsg('')
 
-    const { error } = await supabase.from('requests').insert({
-      client_name: clientName || 'Cliente',
-      category: category.name,
-      description,
-      address,
-      urgency,
-      status: 'in_attesa',
-    })
+    try {
+      const { error } = await supabase.from('requests').insert({
+  client_name: clientName || 'Cliente',
+  client_id: clientId || null,
+  category: category.name,
+  description,
+  address,
+  urgency,
+  status: 'in_attesa',
+})
 
-    setLoading(false)
+      if (error) {
+        console.error('Errore Supabase:', error)
+        setErrorMsg('Non siamo riusciti a inviare la richiesta. Riprova tra poco.')
+        setLoading(false)
+        return
+      }
 
-    if (error) {
-      setErrorMsg('Qualcosa è andato storto, riprova.')
-      return
+      setSubmitted(true)
+    } catch (err) {
+      console.error('Errore di rete:', err)
+      setErrorMsg('Problema di connessione. Controlla la rete e riprova.')
+    } finally {
+      setLoading(false)
     }
-
-    setSubmitted(true)
   }
 
   if (submitted) {
@@ -64,6 +73,10 @@ function RequestForm({ category, clientName, onBack }) {
       </header>
 
       <form className="request-form" onSubmit={handleSubmit}>
+        <div className="urgency-badge">
+          {urgencyMode === 'tomorrow' ? 'Intervento programmato per domani' : 'Intervento immediato'}
+        </div>
+
         <label className="form-label">
           Descrivi il problema
           <textarea
@@ -85,33 +98,6 @@ function RequestForm({ category, clientName, onBack }) {
             onChange={(e) => setAddress(e.target.value)}
             required
           />
-        </label>
-
-        <label className="form-label">
-          Quando ti serve?
-          <div className="urgency-options">
-            <button
-              type="button"
-              className={urgency === 'subito' ? 'urgency-btn active' : 'urgency-btn'}
-              onClick={() => setUrgency('subito')}
-            >
-              Subito
-            </button>
-            <button
-              type="button"
-              className={urgency === 'oggi' ? 'urgency-btn active' : 'urgency-btn'}
-              onClick={() => setUrgency('oggi')}
-            >
-              Oggi
-            </button>
-            <button
-              type="button"
-              className={urgency === 'settimana' ? 'urgency-btn active' : 'urgency-btn'}
-              onClick={() => setUrgency('settimana')}
-            >
-              Questa settimana
-            </button>
-          </div>
         </label>
 
         {errorMsg && <p className="error-text">{errorMsg}</p>}

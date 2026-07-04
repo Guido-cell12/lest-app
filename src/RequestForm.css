@@ -143,3 +143,14 @@
   color: #c0392b;
   margin: -6px 0 0;
 }
+
+.urgency-badge {
+  display: inline-block;
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  margin-bottom: 4px;
+}

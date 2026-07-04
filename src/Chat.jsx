@@ -6,6 +6,9 @@ function Chat({ requestId, senderName, onBack }) {
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
+  const [loadError, setLoadError] = useState('')
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -38,34 +41,54 @@ function Chat({ requestId, senderName, onBack }) {
 
   async function fetchMessages() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('request_id', requestId)
-      .order('created_at', { ascending: true })
+    setLoadError('')
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('request_id', requestId)
+        .order('created_at', { ascending: true })
 
-    if (error) {
-      console.error('Errore caricamento messaggi:', error)
-    } else {
-      setMessages(data)
+      if (error) {
+        console.error('Errore caricamento messaggi:', error)
+        setLoadError('Non riusciamo a caricare i messaggi. Riprova.')
+      } else {
+        setMessages(data)
+      }
+    } catch (err) {
+      console.error('Errore di rete:', err)
+      setLoadError('Problema di connessione. Controlla la rete.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function handleSend(e) {
     e.preventDefault()
-    if (!newMessage.trim()) return
+    if (!newMessage.trim() || sending) return
 
-    const { error } = await supabase.from('messages').insert({
-      request_id: requestId,
-      sender_name: senderName,
-      content: newMessage.trim(),
-    })
+    setSending(true)
+    setSendError('')
+    const textToSend = newMessage.trim()
 
-    if (error) {
-      console.error('Errore invio messaggio:', error)
-    } else {
-      setNewMessage('')
+    try {
+      const { error } = await supabase.from('messages').insert({
+        request_id: requestId,
+        sender_name: senderName,
+        content: textToSend,
+      })
+
+      if (error) {
+        console.error('Errore invio messaggio:', error)
+        setSendError('Messaggio non inviato. Riprova.')
+      } else {
+        setNewMessage('')
+      }
+    } catch (err) {
+      console.error('Errore di rete:', err)
+      setSendError('Problema di connessione. Il messaggio non è stato inviato.')
+    } finally {
+      setSending(false)
     }
   }
 
@@ -95,7 +118,14 @@ function Chat({ requestId, senderName, onBack }) {
       <div className="chat-messages">
         {loading && <p className="chat-loading">Caricamento messaggi...</p>}
 
-        {!loading && messages.length === 0 && (
+        {loadError && (
+          <div className="chat-error-banner">
+            {loadError}
+            <button onClick={fetchMessages} className="chat-retry-btn">Riprova</button>
+          </div>
+        )}
+
+        {!loading && !loadError && messages.length === 0 && (
           <p className="chat-empty">Nessun messaggio ancora. Scrivi il primo!</p>
         )}
 
@@ -119,6 +149,12 @@ function Chat({ requestId, senderName, onBack }) {
         <div ref={bottomRef} />
       </div>
 
+      {sendError && (
+        <div className="chat-send-error">
+          {sendError}
+        </div>
+      )}
+
       <form className="chat-input-bar" onSubmit={handleSend}>
         <input
           type="text"
@@ -126,8 +162,9 @@ function Chat({ requestId, senderName, onBack }) {
           placeholder="Scrivi un messaggio..."
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
+          disabled={sending}
         />
-        <button type="submit" className="chat-send-btn" aria-label="Invia">
+        <button type="submit" className="chat-send-btn" aria-label="Invia" disabled={sending}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="22" y1="2" x2="11" y2="13" />
             <polygon points="22 2 15 22 11 13 2 9 22 2" />

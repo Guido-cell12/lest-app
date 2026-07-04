@@ -193,6 +193,17 @@ useEffect(() => {
     setRequests((prev) => prev.filter((r) => r.id !== request.id))
   }
 
+  async function handleComplete(job) {
+  const { error } = await supabase
+    .from('requests')
+    .update({ status: 'completata' })
+    .eq('id', job.id)
+
+  if (!error) {
+    setMyJobs((prev) => prev.filter((j) => j.id !== job.id))
+  }
+}
+
   if (acceptedJob) {
     return (
       <div className="app-shell">
@@ -314,29 +325,35 @@ useEffect(() => {
       )}
 
       {activeTab === 'storico' && (
-        <section className="section">
-          <h2 className="section-title">Lavori accettati</h2>
+  <section className="section">
+    <h2 className="section-title">Lavori in corso</h2>
 
-          {loadingJobs && <p className="empty-text">Caricamento...</p>}
+    {loadingJobs && <p className="empty-text">Caricamento...</p>}
 
-          {!loadingJobs && myJobs.length === 0 && (
-            <p className="empty-text">Non hai ancora accettato nessun lavoro.</p>
-          )}
+    {!loadingJobs && myJobs.length === 0 && (
+      <p className="empty-text">Non hai lavori in corso al momento.</p>
+    )}
 
-          {!loadingJobs &&
-            myJobs.map((job) => (
-              <div key={job.id} className="request-card">
-                <div className="req-top">
-                  <div className="req-title">{job.description}</div>
-                </div>
-                <div className="req-addr">{job.address}</div>
-                <div className="req-bottom">
-                  <div className="req-price">Cliente: {job.client_name}</div>
-                </div>
-              </div>
-            ))}
-        </section>
-      )}
+    {!loadingJobs &&
+      myJobs.map((job) => (
+        <div key={job.id} className="request-card">
+          <div className="req-top">
+            <div className="req-title">{job.description}</div>
+          </div>
+          <div className="req-addr">{job.address}</div>
+          <div className="req-bottom">
+            <div className="req-price">Cliente: {job.client_name}</div>
+          </div>
+          <button
+            className="btn-primary"
+            onClick={() => handleComplete(job)}
+          >
+            Segna come completato
+          </button>
+        </div>
+      ))}
+  </section>
+)}
 
       {activeTab === 'chat' && (
         <section className="section">

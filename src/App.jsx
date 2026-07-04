@@ -31,7 +31,7 @@ function App() {
   const [searchText, setSearchText] = useState('')
   const [conversations, setConversations] = useState([])
   const [loadingConversations, setLoadingConversations] = useState(false)
-  const [urgencyMode, setUrgencyMode] = useState('immediate') // 'immediate' | 'tomorrow'
+  const [urgencyMode, setUrgencyMode] = useState('immediate')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -39,6 +39,7 @@ function App() {
         const googleUser = session.user
         setUser({
           type: 'client',
+          id: googleUser.id,
           name: googleUser.user_metadata?.full_name || googleUser.email,
           email: googleUser.email,
         })
@@ -141,7 +142,7 @@ function App() {
     const { data, error } = await supabase
       .from('requests')
       .select('*')
-      .eq('client_name', user.name)
+      .eq('client_id', user.id)
       .order('id', { ascending: false })
 
     if (error) {
@@ -153,55 +154,55 @@ function App() {
   }
 
   async function fetchConversations() {
-  setLoadingConversations(true)
+    setLoadingConversations(true)
 
-  const { data: acceptedRequests, error } = await supabase
-    .from('requests')
-    .select('*')
-    .eq('client_name', user.name)
-    .eq('status', 'accettata')
-    .order('id', { ascending: false })
+    const { data: acceptedRequests, error } = await supabase
+      .from('requests')
+      .select('*')
+      .eq('client_id', user.id)
+      .eq('status', 'accettata')
+      .order('id', { ascending: false })
 
-  if (error || !acceptedRequests) {
-    setLoadingConversations(false)
-    return
-  }
+    if (error || !acceptedRequests) {
+      setLoadingConversations(false)
+      return
+    }
 
-  const withDetails = await Promise.all(
-    acceptedRequests.map(async (req) => {
-      const { data: lastMsg } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('request_id', req.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      let proName = req.category
-
-      if (req.accepted_by) {
-        const { data: proData } = await supabase
-          .from('users')
-          .select('name')
-          .eq('id', req.accepted_by)
+    const withDetails = await Promise.all(
+      acceptedRequests.map(async (req) => {
+        const { data: lastMsg } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('request_id', req.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle()
 
-        if (proData?.name) {
-          proName = proData.name
+        let proName = req.category
+
+        if (req.accepted_by) {
+          const { data: proData } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', req.accepted_by)
+            .maybeSingle()
+
+          if (proData?.name) {
+            proName = proData.name
+          }
         }
-      }
 
-      return {
-        ...req,
-        proName,
-        lastMessage: lastMsg?.content || 'Nessun messaggio ancora',
-      }
-    })
-  )
+        return {
+          ...req,
+          proName,
+          lastMessage: lastMsg?.content || 'Nessun messaggio ancora',
+        }
+      })
+    )
 
-  setConversations(withDetails)
-  setLoadingConversations(false)
-}
+    setConversations(withDetails)
+    setLoadingConversations(false)
+  }
 
   if (!user) {
     return <Login onLoginClient={handleLoginClient} onLoginPro={handleLoginPro} />
@@ -223,6 +224,7 @@ function App() {
       <RequestForm
         category={selectedCategory}
         clientName={user.name}
+        clientId={user.id}
         urgencyMode={urgencyMode}
         onBack={() => setSelectedCategory(null)}
       />
@@ -360,15 +362,29 @@ function App() {
           )}
 
           <div className="requests-list">
-            {myRequests.map((req) => (
-              <div key={req.id} className="request-card">
-                <div className="request-info">
-                  <strong>{req.category}</strong>
-                  <p>{req.description}</p>
-                  <span className="request-status">Stato: {req.status}</span>
+            {myRequests.map((req) => {
+              const statusLabel =
+                req.status === 'in_attesa' ? 'In attesa' :
+                req.status === 'accettata' ? 'In corso' :
+                req.status === 'completata' ? 'Completata' :
+                req.status
+
+              const statusClass =
+                req.status === 'in_attesa' ? 'status-pending' :
+                req.status === 'accettata' ? 'status-progress' :
+                req.status === 'completata' ? 'status-done' :
+                ''
+
+              return (
+                <div key={req.id} className="request-card">
+                  <div className="request-info">
+                    <strong>{req.category}</strong>
+                    <p>{req.description}</p>
+                    <span className={`request-status ${statusClass}`}>{statusLabel}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </section>
       )}
@@ -384,22 +400,22 @@ function App() {
           )}
 
           <div className="conversations-list">
-  {conversations.map((conv) => (
-    <button
-      key={conv.id}
-      className="conversation-item"
-      onClick={() => setOpenChatRequest(conv)}
-    >
-      <div className="conversation-avatar">
-        {conv.proName?.charAt(0).toUpperCase()}
-      </div>
-      <div className="conversation-text">
-        <p className="conversation-name">{conv.proName}</p>
-        <p className="conversation-last-msg">{conv.lastMessage}</p>
-      </div>
-    </button>
-  ))}
-</div>
+            {conversations.map((conv) => (
+              <button
+                key={conv.id}
+                className="conversation-item"
+                onClick={() => setOpenChatRequest(conv)}
+              >
+                <div className="conversation-avatar">
+                  {conv.proName?.charAt(0).toUpperCase()}
+                </div>
+                <div className="conversation-text">
+                  <p className="conversation-name">{conv.proName}</p>
+                  <p className="conversation-last-msg">{conv.lastMessage}</p>
+                </div>
+              </button>
+            ))}
+          </div>
         </section>
       )}
 

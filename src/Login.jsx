@@ -22,17 +22,38 @@ function Login({ onLoginClient, onLoginPro }) {
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
 
-  function handleGuestSubmit(e) {
-    e.preventDefault()
-    if (!name.trim() || !surname.trim() || !phone.trim()) {
-      setErrorMsg('Compila tutti i campi per continuare.')
-      return
-    }
-    const fullName = `${name.trim()} ${surname.trim()}`
-    const guestData = { name: fullName, phone: phone.trim(), email: null, isGuest: true }
-    localStorage.setItem('lest_guest_user', JSON.stringify(guestData))
-    onLoginClient(guestData)
+async function handleGuestSubmit(e) {
+  e.preventDefault()
+  if (!name.trim() || !surname.trim() || !phone.trim()) {
+    setErrorMsg('Compila tutti i campi per continuare.')
+    return
   }
+
+  setLoading(true)
+  setErrorMsg('')
+
+  const { data, error } = await supabase.auth.signInAnonymously()
+
+  if (error) {
+    console.error('Errore login anonimo:', error)
+    setErrorMsg('Non siamo riusciti a completare l\'accesso. Riprova.')
+    setLoading(false)
+    return
+  }
+
+  const fullName = `${name.trim()} ${surname.trim()}`
+  const guestData = {
+    id: data.user.id,
+    name: fullName,
+    phone: phone.trim(),
+    email: null,
+    isGuest: true,
+  }
+
+  localStorage.setItem('lest_guest_user', JSON.stringify(guestData))
+  setLoading(false)
+  onLoginClient(guestData)
+}
 
   async function handleGoogleLogin() {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -81,7 +102,7 @@ function Login({ onLoginClient, onLoginPro }) {
 
       setLoading(false)
       if (mode === 'client') {
-        onLoginClient({ name, email })
+        onLoginClient({ name, email, id: userId })
       } else {
         onLoginPro({ name, email, category, city, id: userId })
       }
@@ -111,7 +132,7 @@ function Login({ onLoginClient, onLoginPro }) {
       }
 
       if (userData.type === 'client') {
-        onLoginClient({ name: userData.name, email: userData.email })
+        onLoginClient({ name: userData.name, email: userData.email, id: userData.id })
       } else {
         onLoginPro({ name: userData.name, email: userData.email, category: userData.category, city: userData.city, id: userData.id })
       }
