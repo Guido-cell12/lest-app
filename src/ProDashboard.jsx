@@ -158,13 +158,17 @@ useEffect(() => {
 
     const withLastMessage = await Promise.all(
       acceptedRequests.map(async (req) => {
-        const { data: lastMsg } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('request_id', req.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
+        const { data: lastMsg, error: msgError } = await supabase
+  .from('messages')
+  .select('*')
+  .eq('request_id', req.id)
+  .order('created_at', { ascending: false })
+  .limit(1)
+  .maybeSingle()
+
+if (msgError) {
+  console.error('Errore caricamento ultimo messaggio:', msgError)
+}
 
         return {
           ...req,
