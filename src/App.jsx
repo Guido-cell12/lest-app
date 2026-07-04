@@ -31,6 +31,7 @@ function App() {
   const [searchText, setSearchText] = useState('')
   const [conversations, setConversations] = useState([])
   const [loadingConversations, setLoadingConversations] = useState(false)
+  const [urgencyMode, setUrgencyMode] = useState('immediate') // 'immediate' | 'tomorrow'
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -166,7 +167,6 @@ function App() {
       return
     }
 
-    // Per ogni richiesta accettata, prendi l'ultimo messaggio
     const withLastMessage = await Promise.all(
       acceptedRequests.map(async (req) => {
         const { data: lastMsg } = await supabase
@@ -201,6 +201,7 @@ function App() {
       <RequestForm
         category={selectedCategory}
         clientName={user.name}
+        urgencyMode={urgencyMode}
         onBack={() => setSelectedCategory(null)}
       />
     )
@@ -216,13 +217,13 @@ function App() {
     )
   }
 
- const filteredCategories = searchText.trim()
-  ? categories.filter((cat) =>
-      cat.name.toLowerCase().includes(searchText.trim().toLowerCase())
-    )
-  : categories
+  const filteredCategories = searchText.trim()
+    ? categories.filter((cat) =>
+        cat.name.toLowerCase().includes(searchText.trim().toLowerCase())
+      )
+    : categories
 
-const visibleCategories = showAllCategories ? filteredCategories : filteredCategories.slice(0, 8)
+  const visibleCategories = showAllCategories ? filteredCategories : filteredCategories.slice(0, 8)
 
   return (
     <div className="app-shell">
@@ -233,6 +234,31 @@ const visibleCategories = showAllCategories ? filteredCategories : filteredCateg
 
       {activeTab === 'home' && (
         <>
+          <div className="urgency-toggle">
+            <button
+              className={urgencyMode === 'immediate' ? 'urgency-option active-immediate' : 'urgency-option'}
+              onClick={() => setUrgencyMode('immediate')}
+            >
+              ⚡ Immediato
+            </button>
+            <button
+              className={urgencyMode === 'tomorrow' ? 'urgency-option active-tomorrow' : 'urgency-option'}
+              onClick={() => setUrgencyMode('tomorrow')}
+            >
+              Domani
+            </button>
+          </div>
+
+          {urgencyMode === 'immediate' ? (
+            <p className="urgency-note urgency-note-immediate">
+              ⚡ Intervento rapido — tariffa maggiorata
+            </p>
+          ) : (
+            <p className="urgency-note urgency-note-tomorrow">
+              Intervento programmato per domani — tariffa standard
+            </p>
+          )}
+
           <div className="search-bar">
             <input
               type="text"
@@ -257,47 +283,47 @@ const visibleCategories = showAllCategories ? filteredCategories : filteredCateg
           </div>
 
           <section className="section">
-  <h2 className="section-title">
-    {searchText.trim() ? `Risultati per "${searchText}"` : 'Categorie'}
-  </h2>
+            <h2 className="section-title">
+              {searchText.trim() ? `Risultati per "${searchText}"` : 'Categorie'}
+            </h2>
 
-  {searchText.trim() && visibleCategories.length === 0 && (
-    <p className="empty-text">Nessuna categoria trovata. Prova un altro termine.</p>
-  )}
+            {searchText.trim() && visibleCategories.length === 0 && (
+              <p className="empty-text">Nessuna categoria trovata. Prova un altro termine.</p>
+            )}
 
-  <div className="cat-grid">
-    {visibleCategories.map((cat) => (
-      <button
-        key={cat.id}
-        className="cat-card"
-        onClick={() => setSelectedCategory(cat)}
-      >
-        <span className="cat-name">{cat.name}</span>
-        <span className="cat-available">
-          {cat.available} {cat.available === 1 ? 'disponibile' : 'disponibili'}
-        </span>
-      </button>
-    ))}
-  </div>
+            <div className="cat-grid">
+              {visibleCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  className="cat-card"
+                  onClick={() => setSelectedCategory(cat)}
+                >
+                  <span className="cat-name">{cat.name}</span>
+                  <span className="cat-available">
+                    {cat.available} {cat.available === 1 ? 'disponibile' : 'disponibili'}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-  {!searchText.trim() && categories.length > 8 && (
-    <button
-      className="see-all-btn"
-      onClick={() => setShowAllCategories(!showAllCategories)}
-    >
-      {showAllCategories ? 'Mostra meno' : 'Vedi tutte le categorie'}
-    </button>
-  )}
+            {!searchText.trim() && categories.length > 8 && (
+              <button
+                className="see-all-btn"
+                onClick={() => setShowAllCategories(!showAllCategories)}
+              >
+                {showAllCategories ? 'Mostra meno' : 'Vedi tutte le categorie'}
+              </button>
+            )}
 
-  {searchText.trim() && (
-    <button
-      className="see-all-btn"
-      onClick={() => setSearchText('')}
-    >
-      Cancella ricerca
-    </button>
-  )}
-</section>
+            {searchText.trim() && (
+              <button
+                className="see-all-btn"
+                onClick={() => setSearchText('')}
+              >
+                Cancella ricerca
+              </button>
+            )}
+          </section>
         </>
       )}
 

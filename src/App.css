@@ -359,3 +359,50 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.urgency-toggle {
+  display: flex;
+  margin: 16px 20px 0;
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  padding: 4px;
+  gap: 4px;
+}
+
+.urgency-option {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.active-immediate {
+  background: #ff6b35;
+  color: white;
+}
+
+.active-tomorrow {
+  background: var(--color-accent);
+  color: white;
+}
+
+.urgency-note {
+  margin: 8px 20px 0;
+  font-size: 12px;
+  text-align: center;
+}
+
+.urgency-note-immediate {
+  color: #ff6b35;
+  font-weight: 600;
+}
+
+.urgency-note-tomorrow {
+  color: var(--color-text-muted);
+}
