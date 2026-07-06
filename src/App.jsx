@@ -430,10 +430,8 @@ function App() {
   return (
     <div className="app-shell">
       <header className="header">
-        <h1 className="logo">LEST</h1>
-        <p className="tagline">Ciao {user.name}!</p>
-      </header>
-
+  <h1 className="logo">LEST</h1>
+</header>
       {activeTab === 'home' && (
         <>
           <div className="urgency-toggle">
