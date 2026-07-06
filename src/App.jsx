@@ -13,6 +13,65 @@ const fallbackCategories = [
   { id: 'muratore', name: 'Muratore', available: 0 },
 ]
 
+const categoryKeywords = {
+  idraulico: ['acqua', 'perdita', 'perde', 'rubinetto', 'tubo', 'tubi', 'scarico', 'lavandino', 'wc', 'water', 'doccia', 'bagno', 'sifone', 'caldaia', 'scaldabagno', 'allagamento', 'gocciola', 'rubinetteria', 'sciacquone', 'vasca', 'boiler', 'autoclave', 'tubatura', 'tubature', 'fognatura', 'scarichi otturati', 'lavatrice non scarica'],
+  elettricista: ['corrente', 'luce', 'luci', 'presa', 'prese', 'interruttore', 'quadro', 'elettrico', 'scintille', 'corto', 'cortocircuito', 'lampadina', 'salvavita', 'contatore', 'cavo', 'cavi', 'impianto elettrico', 'blackout', 'fusibile', 'differenziale', 'plafoniera', 'lampadario', 'presa non funziona', 'manca la corrente'],
+  imbianchino: ['pittura', 'vernice', 'muro', 'muri', 'parete', 'pareti', 'imbiancare', 'colore', 'macchia', 'umidita', 'umidità', 'crepe', 'intonaco', 'soffitto', 'tinteggiatura', 'ridipingere', 'muffa'],
+  muratore: ['crepa', 'crepe', 'cemento', 'mattoni', 'muratura', 'costruzione', 'ristrutturazione', 'pavimento', 'piastrelle', 'demolizione', 'fondamenta', 'intonaco', 'massetto', 'parete crollata', 'lavori edili'],
+  falegname: ['legno', 'porta', 'porte', 'finestra', 'finestre', 'mobile', 'mobili', 'armadio', 'cassetto', 'serratura', 'cerniera', 'parquet', 'infisso', 'infissi', 'anta', 'ante', 'scaffale', 'libreria in legno'],
+  giardiniere: ['giardino', 'erba', 'prato', 'siepe', 'siepi', 'albero', 'alberi', 'piante', 'potatura', 'irrigazione', 'erbaccia', 'foglie', 'tosaerba', 'potare', 'taglio erba', 'giardinaggio'],
+  fabbro: ['serratura', 'chiave', 'chiavi', 'porta blindata', 'cancello', 'grata', 'inferriata', 'lucchetto', 'chiuso fuori', 'porta bloccata', 'serranda', 'zanzariera in ferro', 'ringhiera'],
+  'tecnico climatizzatori': ['condizionatore', 'clima', 'climatizzatore', 'aria condizionata', 'split', 'non raffredda', 'non riscalda', 'pompa di calore', 'gas refrigerante', 'filtro condizionatore'],
+  'tecnico elettrodomestici': ['lavatrice', 'lavastoviglie', 'frigorifero', 'frigo', 'forno', 'asciugatrice', 'piano cottura', 'elettrodomestico', 'non si accende', 'non funziona il forno', 'congelatore'],
+  antennista: ['antenna', 'tv', 'televisione', 'segnale', 'digitale terrestre', 'parabola', 'decoder', 'nessun segnale'],
+  vetraio: ['vetro', 'vetri', 'finestra rotta', 'specchio', 'doppio vetro', 'vetro rotto', 'vetrata'],
+  tappezziere: ['divano', 'poltrona', 'tappezzeria', 'imbottitura', 'fodera', 'materasso', 'rivestimento'],
+  piastrellista: ['piastrelle', 'pavimento rotto', 'rivestimento bagno', 'mattonelle', 'fughe', 'ceramica'],
+  disinfestatore: ['insetti', 'blatte', 'scarafaggi', 'topi', 'ratti', 'zanzare', 'formiche', 'tarli', 'vespe', 'calabroni', 'disinfestazione', 'derattizzazione', 'nido di vespe'],
+  traslocatore: ['trasloco', 'traslochi', 'trasporto mobili', 'spostamento casa', 'imballaggio'],
+  'tecnico allarmi': ['allarme', 'antifurto', 'telecamera', 'telecamere', 'videosorveglianza', 'sensore', 'sistema di sicurezza'],
+  tendaggi: ['tenda', 'tende', 'tapparella', 'tapparelle', 'avvolgibile', 'zanzariera', 'zanzariere', 'veneziana', 'persiana', 'persiane'],
+  spurghista: ['spurgo', 'pozzo nero', 'fossa biologica', 'tubature intasate', 'disotturazione', 'autospurgo'],
+}
+
+function getCategoryScore(category, searchText) {
+  const text = searchText.toLowerCase()
+  const catKey = category.id.toLowerCase()
+  let score = 0
+
+  if (category.name.toLowerCase().includes(text) || text.includes(category.name.toLowerCase())) {
+    score += 10
+  }
+
+  const keywords = categoryKeywords[catKey] || []
+  keywords.forEach((keyword) => {
+    if (text.includes(keyword)) {
+      score += 5
+    }
+  })
+
+  return score
+}
+
+function getCategoryScore(category, searchText) {
+  const text = searchText.toLowerCase()
+  const catKey = category.id.toLowerCase()
+  let score = 0
+
+  if (category.name.toLowerCase().includes(text) || text.includes(category.name.toLowerCase())) {
+    score += 10
+  }
+
+  const keywords = categoryKeywords[catKey] || []
+  keywords.forEach((keyword) => {
+    if (text.includes(keyword)) {
+      score += 5
+    }
+  })
+
+  return score
+}
+
 const MAX_VISIBLE_CATEGORIES = 5
 
 function App() {
@@ -252,12 +311,14 @@ function App() {
   }
 
   // Schermata "Mostra tutte le categorie"
-  if (showAllCategoriesScreen) {
-    const filtered = categorySearchText.trim()
-      ? categories.filter((cat) =>
-          cat.name.toLowerCase().includes(categorySearchText.trim().toLowerCase())
-        )
-      : categories
+  const filteredHomeCategories = searchText.trim()
+  ? categories
+      .map((cat) => ({ ...cat, score: getCategoryScore(cat, searchText.trim()) }))
+      .filter((cat) => cat.score > 0)
+      .sort((a, b) => b.score - a.score)
+  : categories
+
+const visibleCategories = filteredHomeCategories.slice(0, MAX_VISIBLE_CATEGORIES)
 
     return (
       <div className="app-shell">
@@ -619,6 +680,5 @@ function App() {
       </nav>
     </div>
   )
-}
 
 export default App
