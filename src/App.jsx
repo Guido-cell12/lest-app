@@ -13,7 +13,7 @@ const fallbackCategories = [
   { id: 'muratore', name: 'Muratore', available: 0 },
 ]
 
-const MAX_VISIBLE_CATEGORIES = 6
+const MAX_VISIBLE_CATEGORIES = 5
 
 function App() {
   const [user, setUser] = useState(() => {
