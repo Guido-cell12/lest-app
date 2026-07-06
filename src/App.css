@@ -149,8 +149,11 @@
 }
 
 .nav-item.active {
-  color: var(--color-accent);
+  color: white;
   font-weight: 600;
+  background: var(--color-accent);
+  border-radius: 12px;
+  margin: 0 4px;
 }
 
 .pro-mode-link {
