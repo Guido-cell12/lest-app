@@ -2,6 +2,29 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabaseClient.js'
 import './Chat.css'
 
+const blockedWords = [
+  'whatsapp', 'telegram', 'instagram', 'facebook', 'sms',
+  'chiamami', 'chiamami al', 'numero di telefono', 'il mio numero',
+  'fuori dall\'app', 'contattami su', 'scrivimi su',
+]
+
+function containsPhoneNumber(text) {
+  // Rileva sequenze di almeno 6 cifre consecutive (anche con spazi, punti o trattini in mezzo)
+  const digitsOnly = text.replace(/[\s.\-]/g, '')
+  const numberPattern = /\d{6,}/
+  return numberPattern.test(digitsOnly)
+}
+
+function containsBlockedContent(text) {
+  const lowerText = text.toLowerCase()
+
+  if (containsPhoneNumber(text)) {
+    return true
+  }
+
+  return blockedWords.some((word) => lowerText.includes(word))
+}
+
 function Chat({ requestId, senderName, onBack }) {
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
@@ -67,9 +90,15 @@ function Chat({ requestId, senderName, onBack }) {
     e.preventDefault()
     if (!newMessage.trim() || sending) return
 
+    const textToSend = newMessage.trim()
+
+    if (containsBlockedContent(textToSend)) {
+      setSendError('Per la tua sicurezza, non è possibile condividere contatti o numeri di telefono in chat. Tutta la comunicazione deve avvenire tramite LEST.')
+      return
+    }
+
     setSending(true)
     setSendError('')
-    const textToSend = newMessage.trim()
 
     try {
       const { error } = await supabase.from('messages').insert({
