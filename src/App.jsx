@@ -53,25 +53,6 @@ function getCategoryScore(category, searchText) {
   return score
 }
 
-function getCategoryScore(category, searchText) {
-  const text = searchText.toLowerCase()
-  const catKey = category.id.toLowerCase()
-  let score = 0
-
-  if (category.name.toLowerCase().includes(text) || text.includes(category.name.toLowerCase())) {
-    score += 10
-  }
-
-  const keywords = categoryKeywords[catKey] || []
-  keywords.forEach((keyword) => {
-    if (text.includes(keyword)) {
-      score += 5
-    }
-  })
-
-  return score
-}
-
 const MAX_VISIBLE_CATEGORIES = 5
 
 function App() {
@@ -310,15 +291,12 @@ function App() {
     )
   }
 
-  // Schermata "Mostra tutte le categorie"
-  const filteredHomeCategories = searchText.trim()
-  ? categories
-      .map((cat) => ({ ...cat, score: getCategoryScore(cat, searchText.trim()) }))
-      .filter((cat) => cat.score > 0)
-      .sort((a, b) => b.score - a.score)
-  : categories
-
-const visibleCategories = filteredHomeCategories.slice(0, MAX_VISIBLE_CATEGORIES)
+  if (showAllCategoriesScreen) {
+    const filtered = categorySearchText.trim()
+      ? categories.filter((cat) =>
+          cat.name.toLowerCase().includes(categorySearchText.trim().toLowerCase())
+        )
+      : categories
 
     return (
       <div className="app-shell">
@@ -440,7 +418,14 @@ const visibleCategories = filteredHomeCategories.slice(0, MAX_VISIBLE_CATEGORIES
     )
   }
 
-  const visibleCategories = categories.slice(0, MAX_VISIBLE_CATEGORIES)
+  const filteredHomeCategories = searchText.trim()
+    ? categories
+        .map((cat) => ({ ...cat, score: getCategoryScore(cat, searchText.trim()) }))
+        .filter((cat) => cat.score > 0)
+        .sort((a, b) => b.score - a.score)
+    : categories
+
+  const visibleCategories = filteredHomeCategories.slice(0, MAX_VISIBLE_CATEGORIES)
 
   return (
     <div className="app-shell">
@@ -506,7 +491,13 @@ const visibleCategories = filteredHomeCategories.slice(0, MAX_VISIBLE_CATEGORIES
           </div>
 
           <section className="section">
-            <p className="section-subtitle">Oppure scegli una categoria</p>
+            <p className="section-subtitle">
+              {searchText.trim() ? `Categorie che corrispondono a "${searchText}"` : 'Oppure scegli una categoria'}
+            </p>
+
+            {searchText.trim() && visibleCategories.length === 0 && (
+              <p className="empty-text">Nessuna categoria trovata per questa ricerca.</p>
+            )}
 
             <div className="category-rows">
               {visibleCategories.map((cat) => (
@@ -523,12 +514,21 @@ const visibleCategories = filteredHomeCategories.slice(0, MAX_VISIBLE_CATEGORIES
               ))}
             </div>
 
-            {categories.length > MAX_VISIBLE_CATEGORIES && (
+            {!searchText.trim() && categories.length > MAX_VISIBLE_CATEGORIES && (
               <button
                 className="see-all-btn"
                 onClick={() => setShowAllCategoriesScreen(true)}
               >
                 Mostra tutte
+              </button>
+            )}
+
+            {searchText.trim() && (
+              <button
+                className="see-all-btn"
+                onClick={() => setSearchText('')}
+              >
+                Cancella ricerca
               </button>
             )}
           </section>
@@ -680,5 +680,6 @@ const visibleCategories = filteredHomeCategories.slice(0, MAX_VISIBLE_CATEGORIES
       </nav>
     </div>
   )
+}
 
 export default App
