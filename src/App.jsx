@@ -13,6 +13,8 @@ const fallbackCategories = [
   { id: 'muratore', name: 'Muratore', available: 0 },
 ]
 
+const MAX_VISIBLE_CATEGORIES = 6
+
 function App() {
   const [user, setUser] = useState(() => {
     const savedGuest = localStorage.getItem('lest_guest_user')
@@ -27,11 +29,12 @@ function App() {
   const [loadingRequests, setLoadingRequests] = useState(false)
   const [openChatRequest, setOpenChatRequest] = useState(null)
   const [categories, setCategories] = useState([])
-  const [showAllCategories, setShowAllCategories] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [conversations, setConversations] = useState([])
   const [loadingConversations, setLoadingConversations] = useState(false)
   const [urgencyMode, setUrgencyMode] = useState('immediate')
+  const [showAllCategoriesScreen, setShowAllCategoriesScreen] = useState(false)
+  const [categorySearchText, setCategorySearchText] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -171,16 +174,16 @@ function App() {
     const withDetails = await Promise.all(
       acceptedRequests.map(async (req) => {
         const { data: lastMsg, error: msgError } = await supabase
-  .from('messages')
-  .select('*')
-  .eq('request_id', req.id)
-  .order('created_at', { ascending: false })
-  .limit(1)
-  .maybeSingle()
+          .from('messages')
+          .select('*')
+          .eq('request_id', req.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-if (msgError) {
-  console.error('Errore caricamento ultimo messaggio:', msgError)
-}
+        if (msgError) {
+          console.error('Errore caricamento ultimo messaggio:', msgError)
+        }
 
         let proName = req.category
 
@@ -240,18 +243,84 @@ if (msgError) {
       <Chat
         requestId={openChatRequest.id}
         senderName={user.name}
-        onBack={() => setOpenChatRequest(null)}
+        onBack={() => {
+          setOpenChatRequest(null)
+          fetchConversations()
+        }}
       />
     )
   }
 
-  const filteredCategories = searchText.trim()
-    ? categories.filter((cat) =>
-        cat.name.toLowerCase().includes(searchText.trim().toLowerCase())
-      )
-    : categories
+  // Schermata "Mostra tutte le categorie"
+  if (showAllCategoriesScreen) {
+    const filtered = categorySearchText.trim()
+      ? categories.filter((cat) =>
+          cat.name.toLowerCase().includes(categorySearchText.trim().toLowerCase())
+        )
+      : categories
 
-  const visibleCategories = showAllCategories ? filteredCategories : filteredCategories.slice(0, 8)
+    return (
+      <div className="app-shell">
+        <header className="form-header">
+          <button
+            className="back-btn"
+            onClick={() => {
+              setShowAllCategoriesScreen(false)
+              setCategorySearchText('')
+            }}
+          >
+            ← Indietro
+          </button>
+          <h1 className="form-title">Tutte le categorie</h1>
+        </header>
+
+        <div className="section" style={{ paddingTop: '12px' }}>
+          <div className="search-bar">
+            <span className="search-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Cerca una categoria"
+              value={categorySearchText}
+              onChange={(e) => setCategorySearchText(e.target.value)}
+              autoFocus
+            />
+          </div>
+        </div>
+
+        <div className="category-rows">
+          {filtered.length === 0 && (
+            <p className="empty-text" style={{ padding: '0 20px' }}>
+              Nessuna categoria trovata.
+            </p>
+          )}
+          {filtered.map((cat) => (
+            <button
+              key={cat.id}
+              className="category-row"
+              onClick={() => {
+                setSelectedCategory(cat)
+                setShowAllCategoriesScreen(false)
+                setCategorySearchText('')
+              }}
+            >
+              <span className="category-row-name">{cat.name}</span>
+              <span className="category-row-count">
+                {cat.available} {cat.available === 1 ? 'disponibile' : 'disponibili'}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const visibleCategories = categories.slice(0, MAX_VISIBLE_CATEGORIES)
 
   return (
     <div className="app-shell">
@@ -288,6 +357,12 @@ if (msgError) {
           )}
 
           <div className="search-bar">
+            <span className="search-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </span>
             <input
               type="text"
               className="search-input"
@@ -311,44 +386,29 @@ if (msgError) {
           </div>
 
           <section className="section">
-            <h2 className="section-title">
-              {searchText.trim() ? `Risultati per "${searchText}"` : 'Categorie'}
-            </h2>
+            <p className="section-subtitle">Oppure scegli una categoria</p>
 
-            {searchText.trim() && visibleCategories.length === 0 && (
-              <p className="empty-text">Nessuna categoria trovata. Prova un altro termine.</p>
-            )}
-
-            <div className="cat-grid">
+            <div className="category-rows">
               {visibleCategories.map((cat) => (
                 <button
                   key={cat.id}
-                  className="cat-card"
+                  className="category-row"
                   onClick={() => setSelectedCategory(cat)}
                 >
-                  <span className="cat-name">{cat.name}</span>
-                  <span className="cat-available">
+                  <span className="category-row-name">{cat.name}</span>
+                  <span className="category-row-count">
                     {cat.available} {cat.available === 1 ? 'disponibile' : 'disponibili'}
                   </span>
                 </button>
               ))}
             </div>
 
-            {!searchText.trim() && categories.length > 8 && (
+            {categories.length > MAX_VISIBLE_CATEGORIES && (
               <button
                 className="see-all-btn"
-                onClick={() => setShowAllCategories(!showAllCategories)}
+                onClick={() => setShowAllCategoriesScreen(true)}
               >
-                {showAllCategories ? 'Mostra meno' : 'Vedi tutte le categorie'}
-              </button>
-            )}
-
-            {searchText.trim() && (
-              <button
-                className="see-all-btn"
-                onClick={() => setSearchText('')}
-              >
-                Cancella ricerca
+                Mostra tutte
               </button>
             )}
           </section>

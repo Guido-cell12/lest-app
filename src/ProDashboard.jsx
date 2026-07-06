@@ -182,15 +182,26 @@ if (msgError) {
   }
 
   async function handleAccept(request) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('requests')
     .update({ status: 'accettata', accepted_by: proId })
     .eq('id', request.id)
+    .eq('status', 'in_attesa')
+    .select()
 
-  if (!error) {
-    setAcceptedJob(request)
-    setRequests((prev) => prev.filter((r) => r.id !== request.id))
+  if (error) {
+    alert('Si è verificato un errore. Riprova.')
+    return
   }
+
+  if (!data || data.length === 0) {
+    alert('Questa richiesta è stata appena presa da un altro professionista.')
+    setRequests((prev) => prev.filter((r) => r.id !== request.id))
+    return
+  }
+
+  setAcceptedJob(request)
+  setRequests((prev) => prev.filter((r) => r.id !== request.id))
 }
 
   async function handleDecline(request) {
@@ -228,14 +239,17 @@ if (msgError) {
   }
 
   if (openChatRequest) {
-    return (
-      <Chat
-        requestId={openChatRequest.id}
-        senderName={proName}
-        onBack={() => setOpenChatRequest(null)}
-      />
-    )
-  }
+  return (
+    <Chat
+      requestId={openChatRequest.id}
+      senderName={proName}
+      onBack={() => {
+        setOpenChatRequest(null)
+        fetchConversations()
+      }}
+    />
+  )
+}
 
   const isAvailable = availableNow || availableTomorrow
 
