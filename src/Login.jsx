@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { supabase } from './supabaseClient.js'
 import './Login.css'
 
-const commonCategories = ['Idraulico', 'Elettricista', 'Imbianchino', 'Muratore', 'Falegname', 'Giardiniere']
-
 function Login({ onLoginClient, onLoginPro }) {
   const [mode, setMode] = useState(null) // null | 'client' | 'pro'
   const [clientStep, setClientStep] = useState(null) // null | 'form' | 'guest'
@@ -16,44 +14,47 @@ function Login({ onLoginClient, onLoginPro }) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState('')
-  const [customCategory, setCustomCategory] = useState('')
+  const [category, setCategory] = useState('')
   const [city, setCity] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
 
-async function handleGuestSubmit(e) {
-  e.preventDefault()
-  if (!name.trim() || !surname.trim() || !phone.trim()) {
-    setErrorMsg('Compila tutti i campi per continuare.')
-    return
+  function capitalizeWords(value) {
+    return value.replace(/\b\p{L}/gu, (char) => char.toUpperCase())
   }
 
-  setLoading(true)
-  setErrorMsg('')
+  async function handleGuestSubmit(e) {
+    e.preventDefault()
+    if (!name.trim() || !surname.trim() || !phone.trim()) {
+      setErrorMsg('Compila tutti i campi per continuare.')
+      return
+    }
 
-  const { data, error } = await supabase.auth.signInAnonymously()
+    setLoading(true)
+    setErrorMsg('')
 
-  if (error) {
-    console.error('Errore login anonimo:', error)
-    setErrorMsg('Non siamo riusciti a completare l\'accesso. Riprova.')
+    const { data, error } = await supabase.auth.signInAnonymously()
+
+    if (error) {
+      console.error('Errore login anonimo:', error)
+      setErrorMsg('Non siamo riusciti a completare l\'accesso. Riprova.')
+      setLoading(false)
+      return
+    }
+
+    const fullName = `${name.trim()} ${surname.trim()}`
+    const guestData = {
+      id: data.user.id,
+      name: fullName,
+      phone: phone.trim(),
+      email: null,
+      isGuest: true,
+    }
+
+    localStorage.setItem('lest_guest_user', JSON.stringify(guestData))
     setLoading(false)
-    return
+    onLoginClient(guestData)
   }
-
-  const fullName = `${name.trim()} ${surname.trim()}`
-  const guestData = {
-    id: data.user.id,
-    name: fullName,
-    phone: phone.trim(),
-    email: null,
-    isGuest: true,
-  }
-
-  localStorage.setItem('lest_guest_user', JSON.stringify(guestData))
-  setLoading(false)
-  onLoginClient(guestData)
-}
 
   async function handleGoogleLogin() {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -89,7 +90,6 @@ async function handleGuestSubmit(e) {
       }
 
       const userId = data.user?.id
-      const category = selectedCategory === 'Altro' ? customCategory : selectedCategory
 
       await supabase.from('users').insert({
         id: userId,
@@ -169,43 +169,43 @@ async function handleGuestSubmit(e) {
   if (mode === 'client' && clientStep === null) {
     return (
       <div className="app-shell">
-  <header className="header header-with-back">
-    <button className="icon-back-btn" onClick={resetToStart} aria-label="Indietro">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="15 18 9 12 15 6" />
-      </svg>
-    </button>
-    <h1 className="logo">LEST</h1>
-  </header>
+        <header className="header header-with-back">
+          <button className="icon-back-btn" onClick={resetToStart} aria-label="Indietro">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <h1 className="logo">LEST</h1>
+        </header>
 
-  <div className="welcome-screen">
-    <div className="centered-block">
-      <p className="welcome-tagline-big">Come vuoi continuare?</p>
-      <div className="welcome-buttons-spaced">
-        <button
-          className="welcome-btn primary"
-          onClick={() => { setIsRegistering(true); setClientStep('form') }}
-        >
-          Registrati
-        </button>
-        <button
-          className="welcome-btn primary"
-          onClick={() => { setIsRegistering(false); setClientStep('form') }}
-        >
-          Accedi
-        </button>
-        <button className="welcome-btn primary" onClick={handleGoogleLogin}>
-          Accedi con Google
-        </button>
-      </div>
+        <div className="welcome-screen">
+          <div className="centered-block">
+            <p className="welcome-tagline-big">Come vuoi continuare?</p>
+            <div className="welcome-buttons-spaced">
+              <button
+                className="welcome-btn primary"
+                onClick={() => { setIsRegistering(true); setClientStep('form') }}
+              >
+                Registrati
+              </button>
+              <button
+                className="welcome-btn primary"
+                onClick={() => { setIsRegistering(false); setClientStep('form') }}
+              >
+                Accedi
+              </button>
+              <button className="welcome-btn primary" onClick={handleGoogleLogin}>
+                Accedi con Google
+              </button>
+            </div>
 
-{errorMsg && <p className="error-text">{errorMsg}</p>}
+            {errorMsg && <p className="error-text">{errorMsg}</p>}
 
-      <button className="guest-btn guest-btn-spaced" onClick={() => { setErrorMsg(''); setClientStep('guest') }}>
-        Continua come ospite
-      </button>
-    </div>
-  </div>
+            <button className="guest-btn guest-btn-spaced" onClick={() => { setErrorMsg(''); setClientStep('guest') }}>
+              Continua come ospite
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -229,7 +229,7 @@ async function handleGuestSubmit(e) {
               type="text"
               placeholder="Il tuo nome"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(capitalizeWords(e.target.value))}
               required
             />
           </label>
@@ -241,7 +241,7 @@ async function handleGuestSubmit(e) {
               type="text"
               placeholder="Il tuo cognome"
               value={surname}
-              onChange={(e) => setSurname(e.target.value)}
+              onChange={(e) => setSurname(capitalizeWords(e.target.value))}
               required
             />
           </label>
@@ -316,7 +316,7 @@ async function handleGuestSubmit(e) {
               type="text"
               placeholder="Il tuo nome"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(capitalizeWords(e.target.value))}
               required
             />
           </label>
@@ -404,40 +404,15 @@ async function handleGuestSubmit(e) {
           <>
             <label className="form-label">
               Che lavoro fai?
-              <div className="category-grid">
-                {commonCategories.map((cat) => (
-                  <button
-                    type="button"
-                    key={cat}
-                    className={selectedCategory === cat ? 'category-pill active' : 'category-pill'}
-                    onClick={() => setSelectedCategory(cat)}
-                  >
-                    {cat}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className={selectedCategory === 'Altro' ? 'category-pill active' : 'category-pill'}
-                  onClick={() => setSelectedCategory('Altro')}
-                >
-                  Altro
-                </button>
-              </div>
+              <input
+                className="form-input"
+                type="text"
+                placeholder="Es. Idraulico, Elettricista, Tecnico climatizzatori..."
+                value={category}
+                onChange={(e) => setCategory(capitalizeWords(e.target.value))}
+                required
+              />
             </label>
-
-            {selectedCategory === 'Altro' && (
-              <label className="form-label">
-                Scrivi il tuo mestiere
-                <input
-                  className="form-input"
-                  type="text"
-                  placeholder="Es. Tecnico climatizzatori"
-                  value={customCategory}
-                  onChange={(e) => setCustomCategory(e.target.value)}
-                  required
-                />
-              </label>
-            )}
 
             <label className="form-label">
               Città / zona di lavoro
@@ -446,7 +421,7 @@ async function handleGuestSubmit(e) {
                 type="text"
                 placeholder="Es. Milano"
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={(e) => setCity(capitalizeWords(e.target.value))}
                 required
               />
             </label>
