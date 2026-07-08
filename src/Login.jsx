@@ -15,12 +15,34 @@ function Login({ onLoginClient, onLoginPro }) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [category, setCategory] = useState('')
-  const [city, setCity] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
+  const [locatingNow, setLocatingNow] = useState(false)
 
   function capitalizeWords(value) {
     return value.replace(/\b\p{L}/gu, (char) => char.toUpperCase())
+  }
+
+  function getLocation() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Il tuo browser non supporta la geolocalizzazione.'))
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          })
+        },
+        (error) => {
+          reject(new Error('Devi consentire l\'accesso alla posizione per usare LEST.'))
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      )
+    })
   }
 
   async function handleGuestSubmit(e) {
@@ -32,6 +54,18 @@ function Login({ onLoginClient, onLoginPro }) {
 
     setLoading(true)
     setErrorMsg('')
+    setLocatingNow(true)
+
+    let location
+    try {
+      location = await getLocation()
+    } catch (err) {
+      setErrorMsg(err.message)
+      setLoading(false)
+      setLocatingNow(false)
+      return
+    }
+    setLocatingNow(false)
 
     const { data, error } = await supabase.auth.signInAnonymously()
 
@@ -42,6 +76,15 @@ function Login({ onLoginClient, onLoginPro }) {
       return
     }
 
+    await supabase.from('users').insert({
+      id: data.user.id,
+      type: 'client',
+      name: `${name.trim()} ${surname.trim()}`,
+      email: `guest-${data.user.id}@lest.local`,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    })
+
     const fullName = `${name.trim()} ${surname.trim()}`
     const guestData = {
       id: data.user.id,
@@ -49,6 +92,8 @@ function Login({ onLoginClient, onLoginPro }) {
       phone: phone.trim(),
       email: null,
       isGuest: true,
+      latitude: location.latitude,
+      longitude: location.longitude,
     }
 
     localStorage.setItem('lest_guest_user', JSON.stringify(guestData))
@@ -57,6 +102,18 @@ function Login({ onLoginClient, onLoginPro }) {
   }
 
   async function handleGoogleLogin() {
+    setErrorMsg('')
+    setLocatingNow(true)
+
+    try {
+      await getLocation()
+    } catch (err) {
+      setErrorMsg(err.message)
+      setLocatingNow(false)
+      return
+    }
+    setLocatingNow(false)
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -80,6 +137,20 @@ function Login({ onLoginClient, onLoginPro }) {
 
     setLoading(true)
 
+    let location = null
+    if (isRegistering) {
+      setLocatingNow(true)
+      try {
+        location = await getLocation()
+      } catch (err) {
+        setErrorMsg(err.message)
+        setLoading(false)
+        setLocatingNow(false)
+        return
+      }
+      setLocatingNow(false)
+    }
+
     if (isRegistering) {
       const { data, error } = await supabase.auth.signUp({ email, password })
 
@@ -97,14 +168,15 @@ function Login({ onLoginClient, onLoginPro }) {
         name,
         email,
         category: mode === 'pro' ? category : null,
-        city: mode === 'pro' ? city : null,
+        latitude: location.latitude,
+        longitude: location.longitude,
       })
 
       setLoading(false)
       if (mode === 'client') {
-        onLoginClient({ name, email, id: userId })
+        onLoginClient({ name, email, id: userId, latitude: location.latitude, longitude: location.longitude })
       } else {
-        onLoginPro({ name, email, category, city, id: userId })
+        onLoginPro({ name, email, category, id: userId, latitude: location.latitude, longitude: location.longitude })
       }
 
     } else {
@@ -132,9 +204,9 @@ function Login({ onLoginClient, onLoginPro }) {
       }
 
       if (userData.type === 'client') {
-        onLoginClient({ name: userData.name, email: userData.email, id: userData.id })
+        onLoginClient({ name: userData.name, email: userData.email, id: userData.id, latitude: userData.latitude, longitude: userData.longitude })
       } else {
-        onLoginPro({ name: userData.name, email: userData.email, category: userData.category, city: userData.city, id: userData.id })
+        onLoginPro({ name: userData.name, email: userData.email, category: userData.category, id: userData.id, latitude: userData.latitude, longitude: userData.longitude })
       }
     }
   }
@@ -194,8 +266,8 @@ function Login({ onLoginClient, onLoginPro }) {
               >
                 Accedi
               </button>
-              <button className="welcome-btn primary" onClick={handleGoogleLogin}>
-                Accedi con Google
+              <button className="welcome-btn primary" onClick={handleGoogleLogin} disabled={locatingNow}>
+                {locatingNow ? 'Rilevamento posizione...' : 'Accedi con Google'}
               </button>
             </div>
 
@@ -258,10 +330,14 @@ function Login({ onLoginClient, onLoginPro }) {
             />
           </label>
 
+          <p className="location-note">
+            LEST ha bisogno della tua posizione per trovare i professionisti vicino a te.
+          </p>
+
           {errorMsg && <p className="error-text">{errorMsg}</p>}
 
-          <button type="submit" className="btn-primary">
-            Continua
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {locatingNow ? 'Rilevamento posizione...' : loading ? 'Caricamento...' : 'Continua'}
           </button>
         </form>
       </div>
@@ -401,37 +477,31 @@ function Login({ onLoginClient, onLoginPro }) {
         )}
 
         {isRegistering && mode === 'pro' && (
-          <>
-            <label className="form-label">
-              Che lavoro fai?
-              <input
-                className="form-input"
-                type="text"
-                placeholder="Es. Idraulico, Elettricista, Tecnico climatizzatori..."
-                value={category}
-                onChange={(e) => setCategory(capitalizeWords(e.target.value))}
-                required
-              />
-            </label>
+          <label className="form-label">
+            Che lavoro fai?
+            <input
+              className="form-input"
+              type="text"
+              placeholder="Es. Idraulico, Elettricista, Tecnico climatizzatori..."
+              value={category}
+              onChange={(e) => setCategory(capitalizeWords(e.target.value))}
+              required
+            />
+          </label>
+        )}
 
-            <label className="form-label">
-              Città / zona di lavoro
-              <input
-                className="form-input"
-                type="text"
-                placeholder="Es. Milano"
-                value={city}
-                onChange={(e) => setCity(capitalizeWords(e.target.value))}
-                required
-              />
-            </label>
-          </>
+        {isRegistering && (
+          <p className="location-note">
+            LEST ha bisogno della tua posizione per {mode === 'pro' ? 'mostrarti le richieste vicine' : 'trovare i professionisti vicino a te'}.
+          </p>
         )}
 
         {errorMsg && <p className="error-text">{errorMsg}</p>}
 
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading
+          {locatingNow
+            ? 'Rilevamento posizione...'
+            : loading
             ? 'Caricamento...'
             : isRegistering
             ? mode === 'client' ? 'Registrati' : 'Crea profilo professionista'
