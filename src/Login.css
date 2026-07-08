@@ -158,6 +158,7 @@
   flex-direction: column;
   gap: 18px;
   width: 100%;
+  margin-bottom: 16px;
 }
 
 .guest-btn-spaced {
