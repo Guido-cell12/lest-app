@@ -104,16 +104,7 @@ function Login({ onLoginClient, onLoginPro }) {
 
   async function handleGoogleLogin() {
     setErrorMsg('')
-    setLocatingNow(true)
-
-    try {
-      await getLocation()
-    } catch (err) {
-      setErrorMsg(err.message)
-      setLocatingNow(false)
-      return
-    }
-    setLocatingNow(false)
+    setLoading(true)
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -124,7 +115,13 @@ function Login({ onLoginClient, onLoginPro }) {
 
     if (error) {
       setErrorMsg('Errore con Google: ' + error.message)
+      setLoading(false)
     }
+    // Se non c'è errore, il browser lascia la pagina e va su Google, poi torna
+    // automaticamente su LEST. A quel punto ci pensa App.jsx: controlla se il
+    // profilo esiste già su Supabase, altrimenti mostra la schermata "ultimo
+    // passo" che chiede la posizione (chiederla qui, prima del redirect,
+    // non serviva a nulla perché la pagina viene ricaricata comunque).
   }
 
   async function handleSubmit(e) {
@@ -285,8 +282,8 @@ function Login({ onLoginClient, onLoginPro }) {
               >
                 Accedi
               </button>
-              <button className="welcome-btn primary" onClick={handleGoogleLogin} disabled={locatingNow}>
-                {locatingNow ? 'Rilevamento posizione...' : 'Accedi con Google'}
+              <button className="welcome-btn primary" onClick={handleGoogleLogin} disabled={loading}>
+                {loading ? 'Connessione a Google...' : 'Accedi con Google'}
               </button>
             </div>
 

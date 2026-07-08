@@ -55,6 +55,83 @@ function getCategoryScore(category, searchText) {
 
 const MAX_VISIBLE_CATEGORIES = 5
 
+// Schermata mostrata SOLO al primo accesso con Google, dopo il redirect di
+// ritorno, quando ancora non esiste una riga per questo utente nella tabella
+// "users". Chiede la posizione qui (il momento giusto, a pagina già caricata)
+// e poi crea il profilo su Supabase.
+function GoogleLocationSetup({ pendingUser, onComplete }) {
+  const [errorMsg, setErrorMsg] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  function handleAllow() {
+    setErrorMsg('')
+    setLoading(true)
+
+    if (!navigator.geolocation) {
+      setErrorMsg('Il tuo browser non supporta la geolocalizzazione.')
+      setLoading(false)
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const latitude = position.coords.latitude
+        const longitude = position.coords.longitude
+
+        const { error } = await supabase.from('users').insert({
+          id: pendingUser.id,
+          type: 'client',
+          name: pendingUser.name,
+          email: pendingUser.email,
+          latitude,
+          longitude,
+        })
+
+        if (error) {
+          console.error('Errore creazione profilo Google:', error)
+          setErrorMsg('Non siamo riusciti a creare il tuo profilo. Riprova.')
+          setLoading(false)
+          return
+        }
+
+        onComplete({
+          type: 'client',
+          id: pendingUser.id,
+          name: pendingUser.name,
+          email: pendingUser.email,
+          latitude,
+          longitude,
+        })
+      },
+      () => {
+        setErrorMsg('Devi consentire l\'accesso alla posizione per usare LEST. Controlla le impostazioni del sito nel tuo browser (icona lucchetto nella barra degli indirizzi).')
+        setLoading(false)
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }
+
+  return (
+    <div className="app-shell">
+      <div className="welcome-screen">
+        <h1 className="welcome-logo">LEST</h1>
+        <p className="welcome-tagline-big">Ultimo passo{pendingUser.name ? `, ${pendingUser.name.split(' ')[0]}` : ''}</p>
+        <p className="location-note">
+          LEST ha bisogno della tua posizione per trovare i professionisti vicino a te.
+        </p>
+
+        {errorMsg && <p className="error-text">{errorMsg}</p>}
+
+        <div className="welcome-buttons">
+          <button className="welcome-btn primary" onClick={handleAllow} disabled={loading}>
+            {loading ? 'Rilevamento posizione...' : 'Consenti posizione e continua'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [user, setUser] = useState(() => {
     const savedGuest = localStorage.getItem('lest_guest_user')
@@ -63,6 +140,7 @@ function App() {
     }
     return null
   })
+  const [pendingGoogleSetup, setPendingGoogleSetup] = useState(null)
   const [activeTab, setActiveTab] = useState('home')
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [myRequests, setMyRequests] = useState([])
@@ -77,17 +155,66 @@ function App() {
   const [categorySearchText, setCategorySearchText] = useState('')
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !user) {
-        const googleUser = session.user
-        setUser({
-          type: 'client',
-          id: googleUser.id,
-          name: googleUser.user_metadata?.full_name || googleUser.email,
-          email: googleUser.email,
+    async function checkGoogleSession() {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session || user) return
+
+      const authUser = session.user
+
+      // Le sessioni ospite (auth anonima) sono già gestite tramite
+      // localStorage all'avvio del componente: qui ci occupiamo solo
+      // del ritorno da un login Google vero e proprio.
+      if (authUser.is_anonymous) return
+
+      const { data: existingUser, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Errore controllo profilo Google:', error)
+        return
+      }
+
+      if (existingUser) {
+        // Utente Google che rientra: carichiamo tutto quello che avevamo
+        // già salvato, posizione inclusa.
+        if (existingUser.type === 'pro') {
+          setUser({
+            type: 'pro',
+            id: existingUser.id,
+            name: existingUser.name,
+            email: existingUser.email,
+            category: existingUser.category,
+            latitude: existingUser.latitude,
+            longitude: existingUser.longitude,
+            serviceRadiusKm: existingUser.service_radius_km,
+          })
+        } else {
+          setUser({
+            type: 'client',
+            id: existingUser.id,
+            name: existingUser.name,
+            email: existingUser.email,
+            latitude: existingUser.latitude,
+            longitude: existingUser.longitude,
+          })
+        }
+      } else {
+        // Primo accesso con Google: il profilo non esiste ancora.
+        // Mostriamo la schermata "ultimo passo" per chiedere la posizione
+        // e creare la riga su Supabase.
+        setPendingGoogleSetup({
+          id: authUser.id,
+          name: authUser.user_metadata?.full_name || authUser.email,
+          email: authUser.email,
         })
       }
-    })
+    }
+
+    checkGoogleSession()
   }, [])
 
   useEffect(() => {
@@ -162,6 +289,7 @@ function App() {
     localStorage.removeItem('lest_guest_user')
     await supabase.auth.signOut()
     setUser(null)
+    setPendingGoogleSetup(null)
     setSelectedCategory(null)
     setActiveTab('home')
     setMyRequests([])
@@ -249,6 +377,18 @@ function App() {
 
     setConversations(withDetails)
     setLoadingConversations(false)
+  }
+
+  if (pendingGoogleSetup) {
+    return (
+      <GoogleLocationSetup
+        pendingUser={pendingGoogleSetup}
+        onComplete={(finalUser) => {
+          setUser(finalUser)
+          setPendingGoogleSetup(null)
+        }}
+      />
+    )
   }
 
   if (!user) {
