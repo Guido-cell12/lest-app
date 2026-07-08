@@ -162,9 +162,6 @@ function App() {
 
       const authUser = session.user
 
-      // Le sessioni ospite (auth anonima) sono già gestite tramite
-      // localStorage all'avvio del componente: qui ci occupiamo solo
-      // del ritorno da un login Google vero e proprio.
       if (authUser.is_anonymous) return
 
       const { data: existingUser, error } = await supabase
@@ -179,8 +176,6 @@ function App() {
       }
 
       if (existingUser) {
-        // Utente Google che rientra: carichiamo tutto quello che avevamo
-        // già salvato, posizione inclusa.
         if (existingUser.type === 'pro') {
           setUser({
             type: 'pro',
@@ -203,9 +198,6 @@ function App() {
           })
         }
       } else {
-        // Primo accesso con Google: il profilo non esiste ancora.
-        // Mostriamo la schermata "ultimo passo" per chiedere la posizione
-        // e creare la riga su Supabase.
         setPendingGoogleSetup({
           id: authUser.id,
           name: authUser.user_metadata?.full_name || authUser.email,
@@ -217,16 +209,22 @@ function App() {
     checkGoogleSession()
   }, [])
 
+  // Ricarica le categorie ogni volta che il cliente cambia il toggle
+  // Immediato/Domani, così il conteggio "disponibili" riflette solo i
+  // professionisti che hanno acceso quella specifica disponibilità.
   useEffect(() => {
     async function fetchCategories() {
+      const availabilityColumn = urgencyMode === 'immediate' ? 'available_now' : 'available_tomorrow'
+
       const { data, error } = await supabase
         .from('users')
         .select('category')
         .eq('type', 'pro')
         .not('category', 'is', null)
+        .eq(availabilityColumn, true)
 
       if (error || !data || data.length === 0) {
-        setCategories(fallbackCategories)
+        setCategories(fallbackCategories.map((cat) => ({ ...cat, available: 0 })))
         return
       }
 
@@ -250,7 +248,7 @@ function App() {
     }
 
     fetchCategories()
-  }, [])
+  }, [urgencyMode])
 
   function handleVoiceInput() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
