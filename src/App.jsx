@@ -261,6 +261,8 @@ function App() {
         proId={user.id}
         proName={user.name}
         proCategory={user.category}
+        proLatitude={user.latitude}
+        proLongitude={user.longitude}
         onBack={handleLogout}
       />
     )
@@ -272,6 +274,8 @@ function App() {
         category={selectedCategory}
         clientName={user.name}
         clientId={user.id}
+        clientLatitude={user.latitude}
+        clientLongitude={user.longitude}
         urgencyMode={urgencyMode}
         onBack={() => setSelectedCategory(null)}
       />
@@ -430,8 +434,8 @@ function App() {
   return (
     <div className="app-shell">
       <header className="header">
-  <h1 className="logo">LEST</h1>
-</header>
+        <h1 className="logo">LEST</h1>
+      </header>
       {activeTab === 'home' && (
         <>
           <div className="urgency-toggle">

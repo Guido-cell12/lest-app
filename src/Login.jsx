@@ -15,6 +15,7 @@ function Login({ onLoginClient, onLoginPro }) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [category, setCategory] = useState('')
+  const [radiusKm, setRadiusKm] = useState('20')
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [locatingNow, setLocatingNow] = useState(false)
@@ -161,6 +162,7 @@ function Login({ onLoginClient, onLoginPro }) {
       }
 
       const userId = data.user?.id
+      const parsedRadius = mode === 'pro' ? (parseInt(radiusKm, 10) || 20) : null
 
       await supabase.from('users').insert({
         id: userId,
@@ -170,13 +172,22 @@ function Login({ onLoginClient, onLoginPro }) {
         category: mode === 'pro' ? category : null,
         latitude: location.latitude,
         longitude: location.longitude,
+        service_radius_km: parsedRadius,
       })
 
       setLoading(false)
       if (mode === 'client') {
         onLoginClient({ name, email, id: userId, latitude: location.latitude, longitude: location.longitude })
       } else {
-        onLoginPro({ name, email, category, id: userId, latitude: location.latitude, longitude: location.longitude })
+        onLoginPro({
+          name,
+          email,
+          category,
+          id: userId,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          serviceRadiusKm: parsedRadius,
+        })
       }
 
     } else {
@@ -206,7 +217,15 @@ function Login({ onLoginClient, onLoginPro }) {
       if (userData.type === 'client') {
         onLoginClient({ name: userData.name, email: userData.email, id: userData.id, latitude: userData.latitude, longitude: userData.longitude })
       } else {
-        onLoginPro({ name: userData.name, email: userData.email, category: userData.category, id: userData.id, latitude: userData.latitude, longitude: userData.longitude })
+        onLoginPro({
+          name: userData.name,
+          email: userData.email,
+          category: userData.category,
+          id: userData.id,
+          latitude: userData.latitude,
+          longitude: userData.longitude,
+          serviceRadiusKm: userData.service_radius_km,
+        })
       }
     }
   }
@@ -477,17 +496,33 @@ function Login({ onLoginClient, onLoginPro }) {
         )}
 
         {isRegistering && mode === 'pro' && (
-          <label className="form-label">
-            Che lavoro fai?
-            <input
-              className="form-input"
-              type="text"
-              placeholder="Es. Idraulico, Elettricista, Tecnico climatizzatori..."
-              value={category}
-              onChange={(e) => setCategory(capitalizeWords(e.target.value))}
-              required
-            />
-          </label>
+          <>
+            <label className="form-label">
+              Che lavoro fai?
+              <input
+                className="form-input"
+                type="text"
+                placeholder="Es. Idraulico, Elettricista, Tecnico climatizzatori..."
+                value={category}
+                onChange={(e) => setCategory(capitalizeWords(e.target.value))}
+                required
+              />
+            </label>
+
+            <label className="form-label">
+              Raggio d'azione (km)
+              <input
+                className="form-input"
+                type="number"
+                min="1"
+                max="200"
+                placeholder="Es. 20"
+                value={radiusKm}
+                onChange={(e) => setRadiusKm(e.target.value)}
+                required
+              />
+            </label>
+          </>
         )}
 
         {isRegistering && (

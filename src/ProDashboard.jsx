@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient.js'
 import Chat from './Chat.jsx'
+import { calculateDistanceKm } from './utils/distance.js'
 import './ProDashboard.css'
 
-function ProDashboard({ proId, proName, proCategory, onBack }) {
+function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, onBack }) {
   const [availableNow, setAvailableNow] = useState(true)
   const [availableTomorrow, setAvailableTomorrow] = useState(true)
   const [requests, setRequests] = useState([])
@@ -15,23 +16,29 @@ function ProDashboard({ proId, proName, proCategory, onBack }) {
   const [openChatRequest, setOpenChatRequest] = useState(null)
   const [conversations, setConversations] = useState([])
   const [loadingConversations, setLoadingConversations] = useState(false)
+  const [radiusKm, setRadiusKm] = useState(20)
+  const [radiusInput, setRadiusInput] = useState('20')
+  const [savingRadius, setSavingRadius] = useState(false)
 
-  // Carica lo stato di disponibilità salvato del professionista
+  // Carica lo stato di disponibilità e il raggio salvato del professionista
   useEffect(() => {
-    async function loadAvailability() {
+    async function loadProfile() {
       if (!proId) return
       const { data } = await supabase
         .from('users')
-        .select('available_now, available_tomorrow')
+        .select('available_now, available_tomorrow, service_radius_km')
         .eq('id', proId)
         .single()
 
       if (data) {
         setAvailableNow(data.available_now ?? true)
         setAvailableTomorrow(data.available_tomorrow ?? true)
+        const radius = data.service_radius_km ?? 20
+        setRadiusKm(radius)
+        setRadiusInput(String(radius))
       }
     }
-    loadAvailability()
+    loadProfile()
   }, [proId])
 
   async function toggleAvailableNow() {
@@ -50,6 +57,16 @@ function ProDashboard({ proId, proName, proCategory, onBack }) {
     }
   }
 
+  async function saveRadius() {
+    const parsed = parseInt(radiusInput, 10)
+    if (!parsed || parsed < 1) return
+
+    setSavingRadius(true)
+    await supabase.from('users').update({ service_radius_km: parsed }).eq('id', proId)
+    setRadiusKm(parsed)
+    setSavingRadius(false)
+  }
+
   async function loadRequests() {
     setLoading(true)
     let query = supabase
@@ -65,58 +82,72 @@ function ProDashboard({ proId, proName, proCategory, onBack }) {
     const { data, error } = await query
 
     if (!error && data) {
-      setRequests(data)
+      // Filtra solo le richieste entro il raggio d'azione del professionista
+      const withinRange = data.filter((req) => {
+        if (!proLatitude || !proLongitude || !req.latitude || !req.longitude) {
+          return true // se manca una posizione, mostriamo comunque (fallback prudente)
+        }
+        const distance = calculateDistanceKm(proLatitude, proLongitude, req.latitude, req.longitude)
+        return distance !== null && distance <= radiusKm
+      })
+      setRequests(withinRange)
     }
     setLoading(false)
   }
 
   useEffect(() => {
-  if (availableNow || availableTomorrow) {
-    loadRequests()
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [availableNow, availableTomorrow])
+    if (availableNow || availableTomorrow) {
+      loadRequests()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableNow, availableTomorrow, radiusKm])
 
-// Ascolta in tempo reale gli aggiornamenti sulle richieste
-useEffect(() => {
-  const channel = supabase
-    .channel('requests-realtime')
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'requests',
-      },
-      (payload) => {
-        const updated = payload.new
-        // Se una richiesta è stata accettata (da chiunque), toglila dalla lista in attesa
-        if (updated.status !== 'in_attesa') {
-          setRequests((prev) => prev.filter((r) => r.id !== updated.id))
+  // Ascolta in tempo reale gli aggiornamenti sulle richieste
+  useEffect(() => {
+    const channel = supabase
+      .channel('requests-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'requests',
+        },
+        (payload) => {
+          const updated = payload.new
+          if (updated.status !== 'in_attesa') {
+            setRequests((prev) => prev.filter((r) => r.id !== updated.id))
+          }
         }
-      }
-    )
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'requests',
-      },
-      (payload) => {
-        const newReq = payload.new
-        // Se arriva una nuova richiesta in attesa della categoria giusta, aggiungila
-        if (newReq.status === 'in_attesa' && (!proCategory || newReq.category === proCategory)) {
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'requests',
+        },
+        (payload) => {
+          const newReq = payload.new
+          if (newReq.status !== 'in_attesa' || (proCategory && newReq.category !== proCategory)) {
+            return
+          }
+          if (proLatitude && proLongitude && newReq.latitude && newReq.longitude) {
+            const distance = calculateDistanceKm(proLatitude, proLongitude, newReq.latitude, newReq.longitude)
+            if (distance === null || distance > radiusKm) {
+              return
+            }
+          }
           setRequests((prev) => [newReq, ...prev])
         }
-      }
-    )
-    .subscribe()
+      )
+      .subscribe()
 
-  return () => {
-    supabase.removeChannel(channel)
-  }
-}, [proCategory])
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [proCategory, proLatitude, proLongitude, radiusKm])
+
   useEffect(() => {
     if (activeTab === 'storico') {
       loadMyJobs()
@@ -127,29 +158,29 @@ useEffect(() => {
   }, [activeTab])
 
   async function loadMyJobs() {
-  setLoadingJobs(true)
-  const { data, error } = await supabase
-    .from('requests')
-    .select('*')
-    .eq('status', 'accettata')
-    .eq('accepted_by', proId)
-    .order('created_at', { ascending: false })
+    setLoadingJobs(true)
+    const { data, error } = await supabase
+      .from('requests')
+      .select('*')
+      .eq('status', 'accettata')
+      .eq('accepted_by', proId)
+      .order('created_at', { ascending: false })
 
-  if (!error && data) {
-    setMyJobs(data)
+    if (!error && data) {
+      setMyJobs(data)
+    }
+    setLoadingJobs(false)
   }
-  setLoadingJobs(false)
-}
 
   async function fetchConversations() {
-  setLoadingConversations(true)
+    setLoadingConversations(true)
 
-  const { data: acceptedRequests, error } = await supabase
-    .from('requests')
-    .select('*')
-    .eq('status', 'accettata')
-    .eq('accepted_by', proId)
-    .order('id', { ascending: false })
+    const { data: acceptedRequests, error } = await supabase
+      .from('requests')
+      .select('*')
+      .eq('status', 'accettata')
+      .eq('accepted_by', proId)
+      .order('id', { ascending: false })
 
     if (error || !acceptedRequests) {
       setLoadingConversations(false)
@@ -159,16 +190,16 @@ useEffect(() => {
     const withLastMessage = await Promise.all(
       acceptedRequests.map(async (req) => {
         const { data: lastMsg, error: msgError } = await supabase
-  .from('messages')
-  .select('*')
-  .eq('request_id', req.id)
-  .order('created_at', { ascending: false })
-  .limit(1)
-  .maybeSingle()
+          .from('messages')
+          .select('*')
+          .eq('request_id', req.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-if (msgError) {
-  console.error('Errore caricamento ultimo messaggio:', msgError)
-}
+        if (msgError) {
+          console.error('Errore caricamento ultimo messaggio:', msgError)
+        }
 
         return {
           ...req,
@@ -182,42 +213,42 @@ if (msgError) {
   }
 
   async function handleAccept(request) {
-  const { data, error } = await supabase
-    .from('requests')
-    .update({ status: 'accettata', accepted_by: proId })
-    .eq('id', request.id)
-    .eq('status', 'in_attesa')
-    .select()
+    const { data, error } = await supabase
+      .from('requests')
+      .update({ status: 'accettata', accepted_by: proId })
+      .eq('id', request.id)
+      .eq('status', 'in_attesa')
+      .select()
 
-  if (error) {
-    alert('Si è verificato un errore. Riprova.')
-    return
-  }
+    if (error) {
+      alert('Si è verificato un errore. Riprova.')
+      return
+    }
 
-  if (!data || data.length === 0) {
-    alert('Questa richiesta è stata appena presa da un altro professionista.')
+    if (!data || data.length === 0) {
+      alert('Questa richiesta è stata appena presa da un altro professionista.')
+      setRequests((prev) => prev.filter((r) => r.id !== request.id))
+      return
+    }
+
+    setAcceptedJob(request)
     setRequests((prev) => prev.filter((r) => r.id !== request.id))
-    return
   }
-
-  setAcceptedJob(request)
-  setRequests((prev) => prev.filter((r) => r.id !== request.id))
-}
 
   async function handleDecline(request) {
     setRequests((prev) => prev.filter((r) => r.id !== request.id))
   }
 
   async function handleComplete(job) {
-  const { error } = await supabase
-    .from('requests')
-    .update({ status: 'completata' })
-    .eq('id', job.id)
+    const { error } = await supabase
+      .from('requests')
+      .update({ status: 'completata' })
+      .eq('id', job.id)
 
-  if (!error) {
-    setMyJobs((prev) => prev.filter((j) => j.id !== job.id))
+    if (!error) {
+      setMyJobs((prev) => prev.filter((j) => j.id !== job.id))
+    }
   }
-}
 
   if (acceptedJob) {
     return (
@@ -239,28 +270,28 @@ if (msgError) {
   }
 
   if (openChatRequest) {
-  return (
-    <Chat
-      requestId={openChatRequest.id}
-      senderName={proName}
-      onBack={() => {
-        setOpenChatRequest(null)
-        fetchConversations()
-      }}
-    />
-  )
-}
+    return (
+      <Chat
+        requestId={openChatRequest.id}
+        senderName={proName}
+        onBack={() => {
+          setOpenChatRequest(null)
+          fetchConversations()
+        }}
+      />
+    )
+  }
 
   const isAvailable = availableNow || availableTomorrow
 
   return (
     <div className="app-shell">
       <header className="pro-header">
-  <div className="pro-header-center">
-    <h1 className="form-title">LEST Pro</h1>
-    <p className="form-sub">Ciao {proName || 'Professionista'}!</p>
-  </div>
-</header>
+        <div className="pro-header-center">
+          <h1 className="form-title">LEST Pro</h1>
+          <p className="form-sub">Ciao {proName || 'Professionista'}!</p>
+        </div>
+      </header>
 
       {activeTab === 'home' && (
         <>
@@ -304,7 +335,7 @@ if (msgError) {
           </div>
 
           <section className="section">
-            <h2 className="section-title">Richieste vicino a te</h2>
+            <h2 className="section-title">Richieste entro {radiusKm} km</h2>
 
             {!isAvailable && (
               <p className="empty-text">
@@ -320,58 +351,68 @@ if (msgError) {
 
             {isAvailable &&
               !loading &&
-              requests.map((req) => (
-                <div key={req.id} className="request-card">
-                  <div className="req-top">
-                    <div className="req-title">{req.description}</div>
-                    <div className="badge badge-new">Nuova</div>
+              requests.map((req) => {
+                const distance =
+                  proLatitude && proLongitude && req.latitude && req.longitude
+                    ? calculateDistanceKm(proLatitude, proLongitude, req.latitude, req.longitude)
+                    : null
+
+                return (
+                  <div key={req.id} className="request-card">
+                    <div className="req-top">
+                      <div className="req-title">{req.description}</div>
+                      <div className="badge badge-new">Nuova</div>
+                    </div>
+                    <div className="req-addr">{req.address}</div>
+                    <div className="req-bottom">
+                      <div className="req-price">Urgenza: {req.urgency}</div>
+                      {distance !== null && (
+                        <div className="req-price">{distance.toFixed(1)} km</div>
+                      )}
+                    </div>
+                    <button className="btn-primary" onClick={() => handleAccept(req)}>
+                      Accetta richiesta
+                    </button>
+                    <button className="btn-secondary" onClick={() => handleDecline(req)}>
+                      Rifiuta
+                    </button>
                   </div>
-                  <div className="req-addr">{req.address}</div>
-                  <div className="req-bottom">
-                    <div className="req-price">Urgenza: {req.urgency}</div>
-                  </div>
-                  <button className="btn-primary" onClick={() => handleAccept(req)}>
-                    Accetta richiesta
-                  </button>
-                  <button className="btn-secondary" onClick={() => handleDecline(req)}>
-                    Rifiuta
-                  </button>
-                </div>
-              ))}
+                )
+              })}
           </section>
         </>
       )}
 
       {activeTab === 'storico' && (
-  <section className="section">
-    <h2 className="section-title">Lavori in corso</h2>
+        <section className="section">
+          <h2 className="section-title">Lavori in corso</h2>
 
-    {loadingJobs && <p className="empty-text">Caricamento...</p>}
+          {loadingJobs && <p className="empty-text">Caricamento...</p>}
 
-    {!loadingJobs && myJobs.length === 0 && (
-      <p className="empty-text">Non hai lavori in corso al momento.</p>
-    )}
+          {!loadingJobs && myJobs.length === 0 && (
+            <p className="empty-text">Non hai lavori in corso al momento.</p>
+          )}
 
-    {!loadingJobs &&
-      myJobs.map((job) => (
-        <div key={job.id} className="request-card">
-          <div className="req-top">
-            <div className="req-title">{job.description}</div>
-          </div>
-          <div className="req-addr">{job.address}</div>
-          <div className="req-bottom">
-            <div className="req-price">Cliente: {job.client_name}</div>
-          </div>
-          <button
-            className="btn-primary"
-            onClick={() => handleComplete(job)}
-          >
-            Segna come completato
-          </button>
-        </div>
-      ))}
-  </section>
-)}
+          {!loadingJobs &&
+            myJobs.map((job) => (
+              <div key={job.id} className="request-card">
+                <div className="req-top">
+                  <div className="req-title">{job.description}</div>
+                </div>
+                <div className="req-addr">{job.address}</div>
+                <div className="req-bottom">
+                  <div className="req-price">Cliente: {job.client_name}</div>
+                </div>
+                <button
+                  className="btn-primary"
+                  onClick={() => handleComplete(job)}
+                >
+                  Segna come completato
+                </button>
+              </div>
+            ))}
+        </section>
+      )}
 
       {activeTab === 'chat' && (
         <section className="section">
@@ -409,6 +450,23 @@ if (msgError) {
           <p className="empty-text">
             {proName} — {proCategory}
           </p>
+
+          <label className="form-label" style={{ marginTop: '16px', display: 'block' }}>
+            Raggio d'azione (km)
+            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+              <input
+                className="form-input"
+                type="number"
+                min="1"
+                max="200"
+                value={radiusInput}
+                onChange={(e) => setRadiusInput(e.target.value)}
+              />
+              <button className="btn-primary" onClick={saveRadius} disabled={savingRadius}>
+                {savingRadius ? 'Salvo...' : 'Salva'}
+              </button>
+            </div>
+          </label>
         </section>
       )}
 

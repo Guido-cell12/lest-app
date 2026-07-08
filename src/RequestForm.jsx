@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from './supabaseClient.js'
 import './RequestForm.css'
 
-function RequestForm({ category, clientName, clientId, urgencyMode, onBack }) {
+function RequestForm({ category, clientName, clientId, clientLatitude, clientLongitude, urgencyMode, onBack }) {
   const [description, setDescription] = useState('')
   const [address, setAddress] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -18,14 +18,16 @@ function RequestForm({ category, clientName, clientId, urgencyMode, onBack }) {
 
     try {
       const { error } = await supabase.from('requests').insert({
-  client_name: clientName || 'Cliente',
-  client_id: clientId || null,
-  category: category.name,
-  description,
-  address,
-  urgency,
-  status: 'in_attesa',
-})
+        client_name: clientName || 'Cliente',
+        client_id: clientId || null,
+        category: category.name,
+        description,
+        address,
+        urgency,
+        status: 'in_attesa',
+        latitude: clientLatitude || null,
+        longitude: clientLongitude || null,
+      })
 
       if (error) {
         console.error('Errore Supabase:', error)
