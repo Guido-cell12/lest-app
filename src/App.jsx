@@ -55,10 +55,6 @@ function getCategoryScore(category, searchText) {
 
 const MAX_VISIBLE_CATEGORIES = 5
 
-// Schermata mostrata SOLO al primo accesso con Google, dopo il redirect di
-// ritorno, quando ancora non esiste una riga per questo utente nella tabella
-// "users". Chiede la posizione qui (il momento giusto, a pagina già caricata)
-// e poi crea il profilo su Supabase.
 function GoogleLocationSetup({ pendingUser, onComplete }) {
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
@@ -209,9 +205,6 @@ function App() {
     checkGoogleSession()
   }, [])
 
-  // Ricarica le categorie ogni volta che il cliente cambia il toggle
-  // Immediato/Domani, così il conteggio "disponibili" riflette solo i
-  // professionisti che hanno acceso quella specifica disponibilità.
   useEffect(() => {
     async function fetchCategories() {
       const availabilityColumn = urgencyMode === 'immediate' ? 'available_now' : 'available_tomorrow'
@@ -316,9 +309,31 @@ function App() {
 
     if (error) {
       console.error('Errore caricamento richieste:', error)
-    } else {
-      setMyRequests(data)
+      setLoadingRequests(false)
+      return
     }
+
+    const withProInfo = await Promise.all(
+      data.map(async (req) => {
+        if (req.status !== 'accettata' || !req.accepted_by) {
+          return req
+        }
+
+        const { data: proData } = await supabase
+          .from('users')
+          .select('name, verification_status')
+          .eq('id', req.accepted_by)
+          .maybeSingle()
+
+        return {
+          ...req,
+          proName: proData?.name || null,
+          proVerified: proData?.verification_status === 'verificato',
+        }
+      })
+    )
+
+    setMyRequests(withProInfo)
     setLoadingRequests(false)
   }
 
@@ -704,6 +719,14 @@ function App() {
                   <div className="request-info">
                     <strong>{req.category}</strong>
                     <p>{req.description}</p>
+                    {req.status === 'accettata' && req.proName && (
+                      <p style={{ fontSize: '13px', color: '#374151', marginTop: '4px' }}>
+                        Professionista: <strong>{req.proName}</strong>
+                        {req.proVerified && (
+                          <span style={{ color: '#065f46', marginLeft: '6px' }}>✓ Verificato</span>
+                        )}
+                      </p>
+                    )}
                     <span className={`request-status ${statusClass}`}>{statusLabel}</span>
                   </div>
                 </div>

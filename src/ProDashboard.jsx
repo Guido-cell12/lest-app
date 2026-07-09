@@ -20,13 +20,32 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
   const [radiusInput, setRadiusInput] = useState('20')
   const [savingRadius, setSavingRadius] = useState(false)
 
-  // Carica lo stato di disponibilità e il raggio salvato del professionista
+  // Profilo: nome e categoria modificabili
+  const [displayName, setDisplayName] = useState(proName || '')
+  const [nameInput, setNameInput] = useState(proName || '')
+  const [displayCategory, setDisplayCategory] = useState(proCategory || '')
+  const [categoryInput, setCategoryInput] = useState(proCategory || '')
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [profileMsg, setProfileMsg] = useState('')
+
+  // Profilo: email e password
+  const [emailInput, setEmailInput] = useState('')
+  const [newPasswordInput, setNewPasswordInput] = useState('')
+  const [savingAccount, setSavingAccount] = useState(false)
+  const [accountMsg, setAccountMsg] = useState('')
+
+  // Verifica identità
+  const [verificationStatus, setVerificationStatus] = useState('non_verificato')
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [verificationMsg, setVerificationMsg] = useState('')
+
+  // Carica lo stato di disponibilità, il raggio e i dati profilo salvati
   useEffect(() => {
     async function loadProfile() {
       if (!proId) return
       const { data } = await supabase
         .from('users')
-        .select('available_now, available_tomorrow, service_radius_km')
+        .select('available_now, available_tomorrow, service_radius_km, name, category, email, verification_status')
         .eq('id', proId)
         .single()
 
@@ -36,6 +55,12 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
         const radius = data.service_radius_km ?? 20
         setRadiusKm(radius)
         setRadiusInput(String(radius))
+        setDisplayName(data.name || '')
+        setNameInput(data.name || '')
+        setDisplayCategory(data.category || '')
+        setCategoryInput(data.category || '')
+        setEmailInput(data.email || '')
+        setVerificationStatus(data.verification_status || 'non_verificato')
       }
     }
     loadProfile()
@@ -45,7 +70,12 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
     const newValue = !availableNow
     setAvailableNow(newValue)
     if (proId) {
-      await supabase.from('users').update({ available_now: newValue }).eq('id', proId)
+      const { error } = await supabase.from('users').update({ available_now: newValue }).eq('id', proId)
+      if (error) {
+        console.error('Errore salvataggio disponibilità subito:', error)
+        alert('Non sono riuscito a salvare la disponibilità. Riprova.')
+        setAvailableNow(!newValue)
+      }
     }
   }
 
@@ -53,7 +83,12 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
     const newValue = !availableTomorrow
     setAvailableTomorrow(newValue)
     if (proId) {
-      await supabase.from('users').update({ available_tomorrow: newValue }).eq('id', proId)
+      const { error } = await supabase.from('users').update({ available_tomorrow: newValue }).eq('id', proId)
+      if (error) {
+        console.error('Errore salvataggio disponibilità domani:', error)
+        alert('Non sono riuscito a salvare la disponibilità. Riprova.')
+        setAvailableTomorrow(!newValue)
+      }
     }
   }
 
@@ -62,9 +97,113 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
     if (!parsed || parsed < 1) return
 
     setSavingRadius(true)
-    await supabase.from('users').update({ service_radius_km: parsed }).eq('id', proId)
+    const { error } = await supabase.from('users').update({ service_radius_km: parsed }).eq('id', proId)
+    if (error) {
+      console.error('Errore salvataggio raggio:', error)
+      alert('Non sono riuscito a salvare il raggio d\'azione. Riprova.')
+      setSavingRadius(false)
+      return
+    }
     setRadiusKm(parsed)
     setSavingRadius(false)
+  }
+
+  async function saveProfileInfo() {
+    if (!nameInput.trim() || !categoryInput.trim()) {
+      setProfileMsg('Nome e categoria non possono essere vuoti.')
+      return
+    }
+
+    setSavingProfile(true)
+    setProfileMsg('')
+
+    const { error } = await supabase
+      .from('users')
+      .update({ name: nameInput.trim(), category: categoryInput.trim() })
+      .eq('id', proId)
+
+    if (error) {
+      console.error('Errore salvataggio profilo:', error)
+      setProfileMsg('Non sono riuscito a salvare le modifiche. Riprova.')
+      setSavingProfile(false)
+      return
+    }
+
+    setDisplayName(nameInput.trim())
+    setDisplayCategory(categoryInput.trim())
+    setProfileMsg('Salvato!')
+    setSavingProfile(false)
+  }
+
+  async function saveAccountInfo() {
+    setSavingAccount(true)
+    setAccountMsg('')
+
+    const updates = {}
+    if (emailInput.trim()) updates.email = emailInput.trim()
+    if (newPasswordInput.trim()) updates.password = newPasswordInput.trim()
+
+    if (Object.keys(updates).length === 0) {
+      setSavingAccount(false)
+      return
+    }
+
+    const { error } = await supabase.auth.updateUser(updates)
+
+    if (error) {
+      console.error('Errore aggiornamento account:', error)
+      setAccountMsg('Non sono riuscito a salvare. ' + error.message)
+      setSavingAccount(false)
+      return
+    }
+
+    // Se l'email è cambiata, Supabase manda una mail di conferma al nuovo indirizzo
+    if (updates.email) {
+      await supabase.from('users').update({ email: updates.email }).eq('id', proId)
+      setAccountMsg('Controlla la nuova email per confermare il cambio.')
+    } else {
+      setAccountMsg('Password aggiornata!')
+    }
+
+    setNewPasswordInput('')
+    setSavingAccount(false)
+  }
+
+  async function handleDocUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingDoc(true)
+    setVerificationMsg('')
+
+    const filePath = `${proId}/documento-${Date.now()}.${file.name.split('.').pop()}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('verification-docs')
+      .upload(filePath, file)
+
+    if (uploadError) {
+      console.error('Errore caricamento documento:', uploadError)
+      setVerificationMsg('Non sono riuscito a caricare il documento. Riprova.')
+      setUploadingDoc(false)
+      return
+    }
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ verification_status: 'in_attesa', verification_doc_path: filePath })
+      .eq('id', proId)
+
+    if (updateError) {
+      console.error('Errore salvataggio stato verifica:', updateError)
+      setVerificationMsg('Documento caricato ma non sono riuscito ad aggiornare lo stato. Contatta l\'assistenza.')
+      setUploadingDoc(false)
+      return
+    }
+
+    setVerificationStatus('in_attesa')
+    setVerificationMsg('Documento caricato! Lo controlleremo al più presto.')
+    setUploadingDoc(false)
   }
 
   async function loadRequests() {
@@ -82,10 +221,9 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
     const { data, error } = await query
 
     if (!error && data) {
-      // Filtra solo le richieste entro il raggio d'azione del professionista
       const withinRange = data.filter((req) => {
         if (!proLatitude || !proLongitude || !req.latitude || !req.longitude) {
-          return true // se manca una posizione, mostriamo comunque (fallback prudente)
+          return true
         }
         const distance = calculateDistanceKm(proLatitude, proLongitude, req.latitude, req.longitude)
         return distance !== null && distance <= radiusKm
@@ -102,7 +240,6 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableNow, availableTomorrow, radiusKm])
 
-  // Ascolta in tempo reale gli aggiornamenti sulle richieste
   useEffect(() => {
     const channel = supabase
       .channel('requests-realtime')
@@ -250,6 +387,11 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
     }
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    onBack()
+  }
+
   if (acceptedJob) {
     return (
       <div className="app-shell">
@@ -273,7 +415,7 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
     return (
       <Chat
         requestId={openChatRequest.id}
-        senderName={proName}
+        senderName={displayName}
         onBack={() => {
           setOpenChatRequest(null)
           fetchConversations()
@@ -284,12 +426,19 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
 
   const isAvailable = availableNow || availableTomorrow
 
+  const verificationBadge = {
+    non_verificato: { label: 'Non verificato', color: '#6b7280', bg: '#f3f4f6' },
+    in_attesa: { label: 'In attesa di controllo', color: '#92400e', bg: '#fef3c7' },
+    verificato: { label: '✓ Verificato', color: '#065f46', bg: '#d1fae5' },
+    rifiutato: { label: 'Documento rifiutato, riprova', color: '#991b1b', bg: '#fee2e2' },
+  }[verificationStatus] || { label: 'Non verificato', color: '#6b7280', bg: '#f3f4f6' }
+
   return (
     <div className="app-shell">
       <header className="pro-header">
         <div className="pro-header-center">
           <h1 className="form-title">LEST Pro</h1>
-          <p className="form-sub">Ciao {proName || 'Professionista'}!</p>
+          <p className="form-sub">Ciao {displayName || 'Professionista'}!</p>
         </div>
       </header>
 
@@ -325,7 +474,7 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
 
           <div className="pro-stat-row">
             <div className="pro-stat">
-              <div className="pro-stat-num">{proCategory || '—'}</div>
+              <div className="pro-stat-num">{displayCategory || '—'}</div>
               <div className="pro-stat-label">Categoria</div>
             </div>
             <div className="pro-stat">
@@ -445,13 +594,65 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
       )}
 
       {activeTab === 'profilo' && (
-        <section className="section">
-          <h2 className="section-title">Profilo</h2>
-          <p className="empty-text">
-            {proName} — {proCategory}
-          </p>
+        <section className="section profile-section">
+          <div className="profile-banner">
+            <div className="profile-avatar">
+              {displayName?.charAt(0).toUpperCase()}
+            </div>
+            <div className="profile-banner-text">
+              <p className="profile-banner-name">{displayName}</p>
+              {emailInput && <p className="profile-banner-email">{emailInput}</p>}
+            </div>
+          </div>
 
-          <label className="form-label" style={{ marginTop: '16px', display: 'block' }}>
+          <div
+            style={{
+              display: 'inline-block',
+              padding: '6px 14px',
+              borderRadius: '999px',
+              fontSize: '13px',
+              fontWeight: 600,
+              color: verificationBadge.color,
+              backgroundColor: verificationBadge.bg,
+              marginTop: '10px',
+            }}
+          >
+            {verificationBadge.label}
+          </div>
+
+          <h2 className="section-title" style={{ marginTop: '20px' }}>Dati profilo</h2>
+
+          <label className="form-label" style={{ display: 'block', marginBottom: '12px' }}>
+            Nome
+            <input
+              className="form-input"
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+            />
+          </label>
+
+          <label className="form-label" style={{ display: 'block', marginBottom: '12px' }}>
+            Categoria / lavoro
+            <input
+              className="form-input"
+              type="text"
+              value={categoryInput}
+              onChange={(e) => setCategoryInput(e.target.value)}
+            />
+          </label>
+
+          {profileMsg && (
+            <p style={profileMsg === 'Salvato!' ? { color: '#065f46' } : undefined} className={profileMsg === 'Salvato!' ? '' : 'error-text'}>
+              {profileMsg}
+            </p>
+          )}
+
+          <button className="btn-primary" onClick={saveProfileInfo} disabled={savingProfile}>
+            {savingProfile ? 'Salvo...' : 'Salva dati profilo'}
+          </button>
+
+          <label className="form-label" style={{ marginTop: '20px', display: 'block' }}>
             Raggio d'azione (km)
             <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
               <input
@@ -467,6 +668,58 @@ function ProDashboard({ proId, proName, proCategory, proLatitude, proLongitude, 
               </button>
             </div>
           </label>
+
+          <h2 className="section-title" style={{ marginTop: '24px' }}>Email e password</h2>
+
+          <label className="form-label" style={{ display: 'block', marginBottom: '12px' }}>
+            Email
+            <input
+              className="form-input"
+              type="email"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+            />
+          </label>
+
+          <label className="form-label" style={{ display: 'block', marginBottom: '12px' }}>
+            Nuova password (lascia vuoto per non cambiarla)
+            <input
+              className="form-input"
+              type="password"
+              placeholder="••••••••"
+              value={newPasswordInput}
+              onChange={(e) => setNewPasswordInput(e.target.value)}
+            />
+          </label>
+
+          {accountMsg && <p className="empty-text">{accountMsg}</p>}
+
+          <button className="btn-primary" onClick={saveAccountInfo} disabled={savingAccount}>
+            {savingAccount ? 'Salvo...' : 'Salva email/password'}
+          </button>
+
+          <h2 className="section-title" style={{ marginTop: '24px' }}>Verifica identità</h2>
+          <p className="empty-text" style={{ marginBottom: '10px' }}>
+            Carica una foto della tua carta d'identità o patente. La controlleremo manualmente
+            e, se tutto è in regola, il tuo profilo avrà il badge "Verificato" visibile ai clienti.
+          </p>
+
+          {verificationMsg && <p className="empty-text">{verificationMsg}</p>}
+
+          <label className="btn-secondary" style={{ display: 'inline-block', cursor: 'pointer', textAlign: 'center' }}>
+            {uploadingDoc ? 'Carico...' : 'Carica documento'}
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={handleDocUpload}
+              disabled={uploadingDoc}
+              style={{ display: 'none' }}
+            />
+          </label>
+
+          <button className="logout-btn" onClick={handleLogout} style={{ marginTop: '28px' }}>
+            Esci
+          </button>
         </section>
       )}
 
